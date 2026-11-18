@@ -1,1 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#234B36"/><text x="32" y="44" font-size="36" text-anchor="middle">🌿</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#234B36"/>
+  <circle cx="256" cy="256" r="196" fill="#F8F5EC"/>
+  <circle cx="256" cy="256" r="166" fill="none" stroke="#DDEBDD" stroke-width="8" stroke-dasharray="14 14"/>
+  <!-- blad -->
+  <path d="M256 126 C 346 150 372 238 332 306 C 304 352 250 372 214 352 C 172 328 168 252 196 202 C 214 168 232 140 256 126 Z" fill="#315C43"/>
+  <path d="M256 146 C 252 214 244 290 240 358" fill="none" stroke="#DDEBDD" stroke-width="10" stroke-linecap="round"/>
+  <path d="M250 214 C 280 212 306 196 322 178 M246 262 C 278 262 306 246 328 224 M244 306 C 270 306 296 292 314 272 M250 232 C 226 230 206 216 194 200" fill="none" stroke="#DDEBDD" stroke-width="7" stroke-linecap="round"/>
+  <!-- varm accent: lille cirkel (en gentagen chance) -->
+  <circle cx="352" cy="162" r="26" fill="#D9A86C"/>
+</svg>
