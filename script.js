@@ -124,7 +124,7 @@
       '<a class="back" href="#/kategori/' + c.id + '">← Tilbage til ' + esc(c.name) + "</a>" +
       art(r.emoji, c.c1, c.c2, "recipe-size", r.cat) +
       '<div class="recipe-top"><div><span class="tag">' + esc(c.name) + '</span><h1 class="page-title" style="margin-top:12px">' + esc(r.title) + "</h1></div>" +
-      '<button type="button" class="fav-btn" data-fav="' + r.id + '"></button></div>' +
+      '<div class="rbtns"><button type="button" class="fav-btn" data-fav="' + r.id + '"></button><button type="button" class="fav-btn" data-share="recipe">↗ Del</button></div></div>' +
       '<p class="page-intro lead" style="margin-bottom:0">' + esc(r.intro) + "</p>" +
       '<div class="rmeta"><div><b>⏱ ' + esc(r.time) + "</b><span>Tilberedningstid</span></div><div><b>👥 " + r.servings + "</b><span>Portioner</span></div><div><b>⭐ " + esc(r.level) + "</b><span>Sværhedsgrad</span></div></div>" +
       '<div class="rcols"><section class="box"><h2>🛒 Ingredienser</h2><ul class="ing">' +
@@ -175,6 +175,8 @@
     }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
     els.forEach(function (e) { io.observe(e); });
   }
+
+  window.RESTEMAD_UI = { art: art, catById: catById };
 
   /* ---------- Opstart ---------- */
   function init() {

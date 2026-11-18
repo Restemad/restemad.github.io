@@ -6,6 +6,12 @@
   <title>RESTEMAD – Mad fortjener en chance til</title>
   <meta name="description" content="RESTEMAD hjælper dig med at mindske madspild med opskrifter og idéer til de madvarer, du allerede har derhjemme.">
   <meta name="theme-color" content="#234B36">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="RESTEMAD – Mad fortjener en chance til">
+  <meta property="og:description" content="Opskrifter, quiz og tips, der hjælper dig med at mindske madspild.">
+  <meta property="og:image" content="https://restemad.github.io/icon-512.png">
+  <meta name="twitter:card" content="summary">
+  <script>(function(){var r=document.documentElement,t='light';try{t=localStorage.getItem('restemad-tema')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){}r.setAttribute('data-theme',t)})()</script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -16,18 +22,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <noscript><style>#loader{display:none!important}.reveal,.hero-text>*,.hero-art{opacity:1!important;transform:none!important;animation:none!important}</style><p style="padding:16px;background:#D9A86C;color:#26342B;text-align:center">Siden virker bedst med JavaScript slået til.</p></noscript>
   <div id="loader" aria-hidden="true"><div class="loader-leaf">🌿</div><div class="loader-text">RESTEMAD</div></div>
   <a class="skip" href="#main">Gå til indhold</a>
 
   <header class="nav" id="nav">
     <div class="wrap nav-inner">
       <a href="#/" class="logo" aria-label="RESTEMAD – til forsiden"><img class="logo-mark" src="favicon.svg" alt="" width="38" height="38">RESTEMAD</a>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Skift tema">🌙</button>
       <button class="menu-btn" id="menuBtn" aria-label="Åbn menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
       <nav class="nav-links" id="navLinks" aria-label="Hovedmenu">
         <a href="#/">Forside</a>
         <a href="#/s/opskrifter">Find opskrifter</a>
         <a href="#/s/madspild">Om madspild</a>
         <a href="#/s/tips">Tips</a>
+        <a href="#/s/quiz">Quiz</a>
         <a href="#/s/om-os">Om os</a>
         <a href="#/s/opskrifter" class="btn btn-accent nav-cta">Find inspiration</a>
       </nav>
@@ -65,7 +74,15 @@
         </div>
       </section>
 
-      <section class="section tight" id="kategorier">
+      <section class="section alt" id="dagens">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>Dagens opskrift</h2><p>En ny opskrift hver dag. Perfekt, hvis du ikke ved, hvad du skal lave.</p></div>
+          <div class="daily reveal" id="dailyBox"></div>
+          <div class="center" style="margin-top:22px"><button id="randomBtn" class="btn btn-ghost" type="button">🎲 Overrask mig</button></div>
+        </div>
+      </section>
+
+      <section class="section" id="kategorier">
         <div class="wrap">
           <div class="section-head reveal"><h2>Vælg en madkategori</h2><p>Seks kategorier med opskrifter til de madvarer, der oftest bliver glemt.</p></div>
           <div class="cat-grid" id="catGrid"></div>
@@ -123,11 +140,19 @@
         </div>
       </section>
 
-      <section class="section" id="om-os">
+      <section class="section" id="quiz">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>Madspild-quiz</h2><p>8 hurtige spørgsmål. Hvor meget ved du om at undgå madspild?</p></div>
+          <div class="quiz reveal" id="quizBox" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="section alt" id="om-os">
         <div class="wrap narrow center reveal">
           <h2>Om RESTEMAD</h2>
           <p>RESTEMAD er et projekt, der har til formål at inspirere mennesker til at mindske madspild gennem kreative opskrifter og gode idéer. Vi tror på, at man kan lave lækker mad af det, man allerede har, og at små ændringer i køkkenet kan gøre en stor forskel.</p>
-          <p>Hjemmesiden er lavet som et skoleprojekt om madspild. Opskrifterne er til inspiration. Brug altid din sunde fornuft og følg gældende retningslinjer for fødevaresikkerhed fra Fødevarestyrelsen.</p>
+          <div class="made" id="madeBy"></div>
+          <p>Opskrifterne er til inspiration. Brug altid din sunde fornuft og følg gældende retningslinjer for fødevaresikkerhed fra Fødevarestyrelsen.</p>
           <a href="#/s/opskrifter" class="btn btn-primary">Find inspiration</a>
         </div>
       </section>
@@ -144,12 +169,16 @@
     <div class="wrap footer-inner">
       <div class="logo light"><img class="logo-mark" src="favicon.svg" alt="" width="38" height="38">RESTEMAD</div>
       <p>Mad fortjener en chance til.</p>
-      <p class="small">Skoleprojekt om madspild · Opskrifter er til inspiration</p>
+      <p class="small" id="footerSchool">Skoleprojekt om madspild · Opskrifter er til inspiration</p>
+      <button class="btn btn-accent" type="button" data-share="site">↗ Del siden</button>
     </div>
   </footer>
 
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <button id="toTop" class="to-top" aria-label="Tilbage til toppen" hidden>↑</button>
-  <script src="data.js"></script>
-  <script src="script.js"></script>
+  <script src="config.js" defer></script>
+  <script src="data.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="extras.js" defer></script>
 </body>
 </html>

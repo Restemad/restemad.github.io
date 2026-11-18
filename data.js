@@ -97,7 +97,7 @@ window.RECIPES = [
     intro: "Rester af kødsovs eller stegt kød bliver til en ny pastaret med masser af smag.",
     ingredients: ["200 g pasta", "150 g tilberedt kød (f.eks. hakkekød eller steg)", "1 dåse hakkede tomater", "1 løg", "1 fed hvidløg", "1 spsk olie", "salt, peber og oregano", "revet ost"],
     steps: ["Kog pastaen efter anvisningen på posen.", "Svits hakket løg og hvidløg i olie i 3 minutter.", "Tilsæt kødet i små stykker og de hakkede tomater.", "Lad det simre i 10 minutter, til alt er rigtig varmt hele vejen.", "Smag til med salt, peber og oregano.", "Vend pastaen i saucen, og drys med ost."],
-    tip: "Madsikkerhed: Varm kødrester helt igennem (mindst 75 °C), og varm dem kun op én gang." },
+    tip: "Madsikkerhed: Varm kødrester helt igennem, til de er dampende varme hele vejen ind, og varm dem kun op én gang." },
   { id: "rugbrodsmadder", cat: "kod", title: "Rugbrødsmadder med pålæg", emoji: "🥪", time: "10 min", servings: 2, level: "Nem",
     intro: "Det klassiske danske frokostbord, hvor pålægsrester får en ny chance.",
     ingredients: ["4 skiver rugbrød", "smør", "pålægsrester (rullepølse, leverpostej, skinke eller ost)", "agurk og tomat", "peberrod, løg eller karse til pynt"],
@@ -146,10 +146,38 @@ window.RECIPES = [
     intro: "Ris, bønner, kød eller grøntsager fra i går ender i en varm wrap. Næsten alt kan bruges.",
     ingredients: ["2 tortillas", "ca. 2 dl tilberedte rester (ris, bønner, kød, grøntsager)", "revet ost", "salat", "2 spsk salsa eller yoghurt"],
     steps: ["Varm resterne på en pande, til de er dampende varme hele vejen.", "Læg tortillaerne på et fad, og fordel resterne på dem.", "Tilføj ost, salat og salsa.", "Fold og rul wrappen sammen.", "Steg evt. kort på panden, til osten smelter."],
-    tip: "Madsikkerhed: Varm rester én gang og til mindst 75 °C. Opvarm ikke igen og igen." },
+    tip: "Madsikkerhed: Varm rester én gang, til de er dampende varme hele vejen igennem. Opvarm ikke igen og igen." },
   { id: "groentsagsfyld", cat: "faerdigretter", title: "Grøntsagsfyld til en hurtig frokost", emoji: "🥙", time: "15 min", servings: 2, level: "Nem",
     intro: "Kogte og bagte grøntsagsrester bliver til en smagfuld fyld til pitabrød, toast eller kartofler.",
     ingredients: ["2 dl tilberedte grøntsager (f.eks. ovnbagte)", "2 pitabrød eller 4 skiver toastbrød", "100 g feta eller revet ost", "2 spsk yoghurt", "krydderurter", "salt og peber"],
     steps: ["Hak resterne af grøntsager groft.", "Bland dem med smuldret feta, yoghurt og krydderurter.", "Smag til med salt og peber.", "Fyld i pitabrød eller på toastbrød.", "Rist kort, til osten er varm og brødet sprødt."],
     tip: "Grøntsagsrester kan også blendes til en hummus-agtig smørepålæg." }
+];
+
+/* ===== MADSPILD-QUIZ ===== */
+window.QUIZ = [
+  { q: "Hvad betyder \"Mindst holdbar til\" på en pakke?",
+    o: ["Maden er farlig, når datoen er overskredet", "Maden har den bedste kvalitet til datoen, men kan ofte spises bagefter", "Maden skal smides ud præcis på datoen"], a: 1,
+    e: "Det er en kvalitetsdato. Brug øjne, næse og smagssans, og tjek om maden ser og dufter fint ud, før du smider den ud." },
+  { q: "Hvilken dato skal du overholde af hensyn til sikkerheden?",
+    o: ["Sidste anvendelsesdato", "Mindst holdbar til", "Produktionsdatoen"], a: 0,
+    e: "\"Sidste anvendelsesdato\" står på letfordærvelige fødevarer som fx rå kød og fisk. Efter den dato skal maden ikke spises." },
+  { q: "Du har en banan med mange brune pletter. Hvad er bedst at gøre?",
+    o: ["Smide den ud", "Bruge den i pandekager, brød eller en smoothie", "Lade den ligge, til den bliver helt sort"], a: 1,
+    e: "Modne bananer er søde og bløde, og det er perfekt til pandekager og smoothies. Du behøver næsten ikke tilsætte sukker." },
+  { q: "Hvordan kan du få slap salat til at blive sprød igen?",
+    o: ["Lægge den i koldt vand i 10-15 minutter", "Varme den i mikroovnen", "Lægge den ved radiatoren"], a: 0,
+    e: "Koldt vand får mange visne bladgrøntsager til at stivne op igen. Tør bladene godt bagefter." },
+  { q: "Hvad er en god måde at undgå at købe for meget mad?",
+    o: ["Handle, når man er sulten", "Lave en madplan og en indkøbsliste", "Købe det hele, der er på tilbud"], a: 1,
+    e: "Med en madplan og en liste køber du kun det, du skal bruge. Kig i køleskabet, før du går i butikken." },
+  { q: "Hvad skal du gøre med rester af tilberedt mad?",
+    o: ["Lade dem stå fremme til næste dag", "Køle dem hurtigt ned og sætte dem i køleskabet", "Gemme dem i skabet"], a: 1,
+    e: "Rester skal i køleskabet hurtigst muligt, og de skal spises inden for et par dage. Varm dem godt igennem, før du spiser dem." },
+  { q: "Hvad kan du gøre med brød, du ikke når at spise?",
+    o: ["Fryse det ned i skiver", "Lægge det i køleskabet, så det holder sig friskt", "Smide det ud efter én dag"], a: 0,
+    e: "Brød kan fryses i skiver. Tørt brød kan også blive til croutoner, arme riddere eller brødchips." },
+  { q: "Hvilken af disse er en god måde at bruge rester på?",
+    o: ["Blande dem i en wrap, en suppe eller en pastasalat", "Smide dem ud, fordi det ikke er friskt", "Blende dem og hælde dem ud i vasken"], a: 0,
+    e: "Rester kan blive til noget helt nyt. Kig i opskrifterne her på siden for idéer." }
 ];
