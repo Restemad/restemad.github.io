@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RESTEMAD – Mad fortjener en chance til</title>
+  <meta name="description" content="RESTEMAD hjælper dig med at mindske madspild med opskrifter og idéer til de madvarer, du allerede har derhjemme.">
+  <meta name="theme-color" content="#234B36">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="loader" aria-hidden="true"><div class="loader-leaf">🌿</div><div class="loader-text">RESTEMAD</div></div>
+  <a class="skip" href="#main">Gå til indhold</a>
+
+  <header class="nav" id="nav">
+    <div class="wrap nav-inner">
+      <a href="#/" class="logo" aria-label="RESTEMAD – til forsiden"><span class="logo-mark">🌿</span>RESTEMAD</a>
+      <button class="menu-btn" id="menuBtn" aria-label="Åbn menu" aria-expanded="false" aria-controls="navLinks"><span></span><span></span><span></span></button>
+      <nav class="nav-links" id="navLinks" aria-label="Hovedmenu">
+        <a href="#/">Forside</a>
+        <a href="#/s/opskrifter">Find opskrifter</a>
+        <a href="#/s/madspild">Om madspild</a>
+        <a href="#/s/tips">Tips</a>
+        <a href="#/s/om-os">Om os</a>
+        <a href="#/s/opskrifter" class="btn btn-accent nav-cta">Find inspiration</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- FORSIDE -->
+    <div id="view-home" class="view">
+      <section class="hero" id="top">
+        <div class="wrap hero-grid">
+          <div class="hero-text">
+            <span class="eyebrow">Mindre madspild · Mere smag</span>
+            <h1>Mad fortjener en chance til.</h1>
+            <p class="lead">Find inspiration til lækre retter og kreative idéer, der hjælper dig med at mindske madspild.</p>
+            <div class="btn-row">
+              <a href="#/s/opskrifter" class="btn btn-primary">Find opskrifter</a>
+              <a href="#/s/madspild" class="btn btn-ghost">Lær om madspild</a>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="plate">
+              <span class="f f1">🍌</span><span class="f f2">🥕</span><span class="f f3">🍞</span>
+              <span class="f f4">🍅</span><span class="f f5">🥛</span><span class="f f6">🍎</span>
+              <span class="plate-main">🥗</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section intro reveal">
+        <div class="wrap narrow center">
+          <h2>Brug det, du allerede har</h2>
+          <p>Der er ofte mere mad i køleskabet og køkkenskabet, end man tror. En banan med brune pletter, et tørt rundstykke eller en halv agurk kan snildt blive til noget lækkert. Vælg en kategori, og lad dig inspirere til at give maden en chance til.</p>
+        </div>
+      </section>
+
+      <section class="section tight" id="kategorier">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>Vælg en madkategori</h2><p>Seks kategorier med opskrifter til de madvarer, der oftest bliver glemt.</p></div>
+          <div class="cat-grid" id="catGrid"></div>
+        </div>
+      </section>
+
+      <section class="section alt" id="opskrifter">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>Find opskrifter</h2><p>Søg efter en ret eller en ingrediens, eller filtrer på kategori.</p></div>
+          <div class="tools reveal">
+            <label class="search" for="searchInput">
+              <span aria-hidden="true">🔍</span>
+              <input id="searchInput" type="search" placeholder="Søg fx banan, wrap eller suppe …" autocomplete="off">
+              <button type="button" id="clearSearch" class="clear" aria-label="Ryd søgning" hidden>✕</button>
+            </label>
+            <div class="chips" id="chips" role="group" aria-label="Filtrer efter kategori"></div>
+          </div>
+          <p class="result-count" id="resultCount" aria-live="polite"></p>
+          <div class="recipe-grid" id="recipeGrid"></div>
+          <div class="empty" id="emptyState" hidden>
+            <div class="empty-emoji">🥣</div>
+            <h3>Ingen opskrifter fundet</h3>
+            <p id="emptyText">Prøv et andet søgeord, eller vælg en anden kategori.</p>
+            <button class="btn btn-primary" id="resetBtn" type="button">Nulstil søgning</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="madspild">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>Hvorfor er madspild et problem?</h2><p>Madspild handler om mere end en klump mad i skraldespanden.</p></div>
+          <div class="info-grid">
+            <article class="info-card reveal"><div class="ic">🗑️</div><h3>Hvad er madspild?</h3><p>Madspild er mad, der er egnet til at spise, men som alligevel bliver smidt ud. Det sker i hjemmet, i butikker, i restauranter og tidligere i produktionen.</p></article>
+            <article class="info-card reveal"><div class="ic">🤔</div><h3>Hvorfor smider vi mad ud?</h3><p>Vi køber for meget, glemmer det i køleskabet, laver for store portioner eller tror, at en dato betyder, at maden er dårlig, selvom den ofte er fin.</p></article>
+            <article class="info-card reveal"><div class="ic">🌍</div><h3>Hvad betyder det for miljøet?</h3><p>Al mad kræver jord, vand og energi at producere og køre rundt. Smider vi maden ud, er de ressourcer brugt forgæves, og det belaster klimaet.</p></article>
+            <article class="info-card reveal"><div class="ic">🧺</div><h3>Hvad kan man gøre i hverdagen?</h3><p>Planlæg indkøb, brug rester, opbevar maden rigtigt og frys ned. Små vaner i køkkenet gør en stor forskel over tid.</p></article>
+            <article class="info-card reveal"><div class="ic">🥕</div><h3>Brug det, du har</h3><p>Når du bruger det, du allerede har, sparer du penge og undgår at smide gode ressourcer væk. Det er både godt for pengepungen og for planeten.</p></article>
+            <article class="info-card reveal"><div class="ic">📅</div><h3>Forstå datoerne</h3><p>"Mindst holdbar til" siger noget om kvalitet, og maden kan ofte stadig spises. "Sidste anvendelsesdato" handler om sikkerhed og skal overholdes.</p></article>
+          </div>
+          <p class="note reveal">Vil du vide mere? Læs hos <a href="https://www.stopspildafmad.org" target="_blank" rel="noopener">Stop Spild Af Mad</a> eller <a href="https://foedevarestyrelsen.dk" target="_blank" rel="noopener">Fødevarestyrelsen</a>. Her kan du finde opdaterede tal og regler.</p>
+        </div>
+      </section>
+
+      <section class="section alt" id="tips">
+        <div class="wrap">
+          <div class="section-head reveal"><h2>6 nemme måder at mindske madspild på</h2><p>Konkrete råd, du kan bruge allerede i dag.</p></div>
+          <div class="tip-grid">
+            <article class="tip reveal"><span class="num">1</span><h3>Planlæg dine indkøb</h3><p>Lav en madplan for ugen, og skriv en indkøbsliste ud fra den. Så køber du kun det, du faktisk skal bruge.</p></article>
+            <article class="tip reveal"><span class="num">2</span><h3>Kig i køleskabet før du handler</h3><p>Tjek køleskab, fryser og skabe, før du går i butikken. Det forhindrer, at du køber det samme to gange.</p></article>
+            <article class="tip reveal"><span class="num">3</span><h3>Brug rester i nye retter</h3><p>Gårsdagens ris kan blive til stegte ris, og kogt pasta til pastasalat. Brug vores opskrifter som inspiration.</p></article>
+            <article class="tip reveal"><span class="num">4</span><h3>Opbevar maden korrekt</h3><p>Grøntsager, mejeriprodukter og kød har forskellige behov. Hold køleskabet koldt, og luk poser og bokse tæt.</p></article>
+            <article class="tip reveal"><span class="num">5</span><h3>Frys mad ned, når det er muligt</h3><p>Brød, bananer, bær og kogte retter kan fryses. Skriv dato på boksen, så du husker at bruge det.</p></article>
+            <article class="tip reveal"><span class="num">6</span><h3>Hold styr på datomærkningen</h3><p>Husk forskellen på "mindst holdbar til" og "sidste anvendelsesdato". Brug øjne, næse og smagssans ved den første.</p></article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="om-os">
+        <div class="wrap narrow center reveal">
+          <h2>Om RESTEMAD</h2>
+          <p>RESTEMAD er et projekt, der har til formål at inspirere mennesker til at mindske madspild gennem kreative opskrifter og gode idéer. Vi tror på, at man kan lave lækker mad af det, man allerede har, og at små ændringer i køkkenet kan gøre en stor forskel.</p>
+          <p>Hjemmesiden er lavet som et skoleprojekt om madspild. Opskrifterne er til inspiration. Brug altid din sunde fornuft og følg gældende retningslinjer for fødevaresikkerhed fra Fødevarestyrelsen.</p>
+          <a href="#/s/opskrifter" class="btn btn-primary">Find inspiration</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- KATEGORISIDE -->
+    <div id="view-category" class="view" hidden></div>
+
+    <!-- OPSKRIFTSSIDE -->
+    <div id="view-recipe" class="view" hidden></div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <div class="logo light"><span class="logo-mark">🌿</span>RESTEMAD</div>
+      <p>Mad fortjener en chance til.</p>
+      <p class="small">Skoleprojekt om madspild · Opskrifter er til inspiration</p>
+    </div>
+  </footer>
+
+  <button id="toTop" class="to-top" aria-label="Tilbage til toppen" hidden>↑</button>
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
