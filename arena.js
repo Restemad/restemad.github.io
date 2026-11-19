@@ -281,7 +281,7 @@
       // Aim-aligned walls: up/down = tall, left/right = wide.
       var dims=vertical?[110,22]:[22,110];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
     }
-    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:95,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
+    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
     if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
     if(!freebuild()&&players.some(function(p){return p.alive&&obstacleHit(o,p.x,p.y,p.r+5)}))return;
     obstacles.push(o);lastBuildAt=performance.now();buildCooldownUntil=performance.now()+(freebuild()?0:2600);
@@ -296,12 +296,30 @@
     var a=Math.atan2(enemy.y-bot.y,enemy.x-bot.x);
     var x=bot.x+Math.cos(a)*75,y=bot.y+Math.sin(a)*75;
     var tall=Math.abs(Math.cos(a))>.707,w=tall?22:110,h=tall?110:22;
-    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:95,expires:now+11000,edited:false};
+    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,expires:now+11000,edited:false};
     if(o.x<25||o.y<25||o.x+o.w>WORLD_W-25||o.y+o.h>WORLD_H-25)return false;
     if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+o.w+6&&v.x+v.w>o.x-6&&v.y<o.y+o.h+6&&v.y+v.h>o.y-6}))return false;
     if(players.some(function(v){return v.alive&&obstacleHit(o,v.x,v.y,(v.r||18)+5)}))return false;
     obstacles.push(o);ring(x,y,"#b8f0ff",30);
     return true;
+  }
+  // Deterministic cracks: damage stages grow visibly without showing wall HP.
+  function drawWallCracks(o){
+    var damage=1-o.hp/(o.maxHp||75);
+    if(damage<=.05)return;
+    var stages=damage>.72?4:damage>.48?3:damage>.23?2:1;
+    var cx=o.x+o.w/2,cy=o.y+o.h/2;
+    ctx.save();ctx.beginPath();ctx.rect(o.x+2,o.y+2,Math.max(0,o.w-4),Math.max(0,o.h-4));ctx.clip();
+    ctx.strokeStyle="rgba(31,49,62,"+(.48+damage*.42)+")";ctx.lineWidth=1.4+damage*1.6;ctx.lineCap="round";ctx.lineJoin="round";
+    for(var i=0;i<stages;i++){
+      var seed=i*2.399+o.x*.013+o.y*.019,angle=seed+(o.w>o.h?0:Math.PI/2);
+      var length=(o.w>o.h?o.w:o.h)*(.24+i*.12),x=cx+Math.cos(seed)*Math.min(o.w*.16,10),y=cy+Math.sin(seed)*Math.min(o.h*.16,10);
+      ctx.beginPath();ctx.moveTo(x,y);
+      for(var j=1;j<=4;j++){var t=j/4;ctx.lineTo(x+Math.cos(angle)*length*t+Math.sin(seed+j*2.7)*4,y+Math.sin(angle)*length*t+Math.cos(seed+j*2.1)*4);}
+      ctx.stroke();
+      if(stages>=3){ctx.beginPath();ctx.moveTo(x+Math.cos(angle)*length*.5,y+Math.sin(angle)*length*.5);ctx.lineTo(x+Math.cos(angle+1.1)*length*.38,y+Math.sin(angle+1.1)*length*.38);ctx.stroke();}
+    }
+    ctx.restore();
   }
   function editBuild(){
     if(!freebuild()||!running||!me||!me.alive)return;
@@ -494,7 +512,7 @@
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
       if(b.superTrail&&Math.random()<.45){particles.push({x:b.x,y:b.y,vx:rand(-35,35),vy:rand(-35,35),life:rand(.12,.25),color:b.superTrail,r:rand(2,5)});if(particles.length>260)particles.splice(0,particles.length-260);}
       var wall=obstacles.some(function(o){if(!obstacleHit(o,b.x,b.y,b.r))return false;if(o.built)o.hp-=b.damage;return true;});
-      if(wall)obstacles=obstacles.filter(function(o){return !o.built||o.hp>0;});
+      if(wall){var destroyed=obstacles.filter(function(o){return o.built&&o.hp<=0;});destroyed.forEach(function(o){ring(o.x+o.w/2,o.y+o.h/2,"#b8f0ff",24);});obstacles=obstacles.filter(function(o){return !o.built||o.hp>0;});}
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
       for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner){var rx=(p.hitRx||p.r)+b.r,ry=(p.hitRy||p.r)+b.r,dx=(b.x-p.x)/rx,dy=(b.y-p.y)/ry;if(dx*dx+dy*dy<=1){hit=p;break;}}}
@@ -754,6 +772,7 @@
             if(freebuild()){ctx.strokeStyle="rgba(20,94,88,.48)";ctx.lineWidth=1.5;for(var brick=1;brick<3;brick++){ctx.beginPath();ctx.moveTo(bx,by+brick*o.h/6);ctx.lineTo(bx+o.w/2,by+brick*o.h/6);ctx.stroke();}}
           }
         }
+        if(o.buildType==="wall")drawWallCracks(o);
         ctx.restore();return;}
       if(o.kind==="wall"){
         ctx.fillStyle="#647866";ctx.beginPath();ctx.moveTo(o.x,o.y+lift);ctx.lineTo(o.x+o.w,o.y+lift);ctx.lineTo(o.x+o.w,o.y+o.h+lift);ctx.lineTo(o.x,o.y+o.h+lift);ctx.closePath();ctx.fill();
