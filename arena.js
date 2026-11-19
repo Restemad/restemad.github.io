@@ -621,7 +621,9 @@
     players.forEach(function(p){if(!p.alive||p.x<camera.x-80||p.x>camera.x+viewWorldW+80||p.y<camera.y-80||p.y>camera.y+viewWorldH+80||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);
       if(p.shield>0){ctx.save();var shieldPulse=1+Math.sin(elapsed*9)*.045;ctx.globalAlpha=.74;ctx.strokeStyle="#8cf0ff";ctx.lineWidth=6;ctx.shadowColor="#8cf0ff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(p.x,p.y,42*shieldPulse,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.13;ctx.fillStyle="#75eaff";ctx.fill();ctx.restore();}
       if(p.superFlash>0){ctx.save();ctx.globalAlpha=clamp(p.superFlash,0,1);ctx.strokeStyle="#ffe37a";ctx.shadowColor="#ffe37a";ctx.shadowBlur=15;ctx.lineWidth=7;ctx.beginPath();ctx.arc(p.x,p.y,45+(1.05-p.superFlash)*55,0,Math.PI*2);ctx.stroke();ctx.restore();}
-      ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);ctx.restore();});
+      ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p===me?"DIG":net?String(p.name||"MODSTANDER").slice(0,18):foods[p.fighter].name,p.x,p.y-48);
+      if(net){ctx.save();ctx.strokeStyle=p===me?"#47d7ff":"#ff6a78";ctx.lineWidth=p===me?5:4;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,33,0,Math.PI*2);ctx.stroke();ctx.restore();}
+      ctx.restore();});
     // Brawl Stars-style foreground foliage: the bush softens above your own fighter.
     // Other players outside cannot see the hidden hero at all (filtered above).
     if(me&&me.alive&&inBush(me)){
@@ -768,7 +770,7 @@
     }else if(net&&!net.host){
       elapsed+=dt;
       if(now-netLastInput>45){netLastInput=now;sendNetInput();}
-      if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Mistet forbindelse til værten.";
+      if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Ingen kampdata fra værten. I spiller ikke synkroniseret.";
     }else{
       update(dt);
       if(net&&net.host&&now-netLastSend>85){netLastSend=now;sendNetSnapshot(false);}
