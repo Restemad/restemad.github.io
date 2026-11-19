@@ -169,7 +169,7 @@
   function startGame(which){net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;
     audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
-    for(var i=0;i<9;i++){
+    for(var i=0;i<12;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
       var food=foods[f],botHp=Math.round(food.hp*1.35);players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:botHp,maxHp:botHp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage*.85,rate:food.rate*1.25,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0});
     }
@@ -376,27 +376,41 @@
       }else{
         p.walking=false;
         p.ai-=dt;
-        if(p.ai<=0){p.target=nearest(p,true)||nearest(p,false);if(p.target&&!canSee(p,p.target))p.target=null;p.ai=rand(.32,.62);}
+        if(p.ai<=0){
+          // During early rounds, avoid unnecessary fights; during endgame,
+          // actively seek opponents. Keep reacting to nearby threats.
+          p.target=nearest(p,true)||nearest(p,false);
+          if(p.target&&!canSee(p,p.target))p.target=null;
+          p.ai=rand(.32,.62);
+        }
         var t=p.target&&p.target.alive&&canSee(p,p.target)?p.target:nearest(p,true)||nearest(p,false);if(t&&!canSee(p,t))t=null;
+        var endgame=stormStage>=3||zone.r<650;
+        // Only disengage early if the enemy is far enough away to do so safely.
+        var retreatEarly=!endgame&&t&&dist(p,t)>175&&
+          (p.hp<p.maxHp*.65||dist(p,t)>420);
         if(t){
           var a=Math.atan2(t.y-p.y,t.x-p.x),d=dist(p,t),visible=clearShot(p,t);p.angle=a;
           var strafe=Math.sin(elapsed*1.8+p.x*.018)*.62;
           var mx=0,my=0;
           bullets.forEach(function(b){if(b.owner===p||!b.owner.alive)return;var bx=p.x-b.x,by=p.y-b.y,bd=Math.hypot(bx,by);var closing=b.vx*bx+b.vy*by<0;if(bd<125&&closing){mx+=bx/Math.max(1,bd)*1.25;my+=by/Math.max(1,bd)*1.25;}});
           if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r-145){var za=Math.atan2(zone.y-p.y,zone.x-p.x);mx=Math.cos(za)*1.6;my=Math.sin(za)*1.6;}
-          else if(p.hp<p.maxHp*.38&&d<370){mx=-Math.cos(a)*1.4;my=-Math.sin(a)*1.4;}
-          else if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
+          else if(p.hp<p.maxHp*.45&&d<390){mx=-Math.cos(a)*1.45;my=-Math.sin(a)*1.45;}
+          else if(retreatEarly){mx=-Math.cos(a)*.8;my=-Math.sin(a)*.8;}
+          else if(d>(endgame?330:285)){mx=Math.cos(a);my=Math.sin(a);}
+          else if(d<(endgame?170:205)){mx=-Math.cos(a);my=-Math.sin(a);}
           if(!visible){var side=(Math.sin(elapsed+p.y*.01)>0?1:-1);mx+=-Math.sin(a)*side*.85;my+=Math.cos(a)*side*.85;}
           else {mx-=Math.sin(a)*strafe;my+=Math.cos(a)*strafe;}
           p.walking=Math.hypot(mx,my)>.08;
           movePlayer(p,mx,my,dt);
-          if(visible&&d<p.range*.9&&Math.random()<.34)shoot(p,a+rand(-.045,.045),t);
+          if(visible&&d<p.range*.9&&!retreatEarly&&Math.random()<(endgame?.44:.25))shoot(p,a+rand(-.045,.045),t);
+          // Bots can use earned supers in meaningful fights, not randomly at spawn.
+          if(endgame&&visible&&d<p.range*.72&&(p.superCharge||0)>=100&&Math.random()<dt*.85)useSuper(p);
         }else{
           // Without a visible opponent, stay inside the safe zone and reposition toward cover.
           var safe=Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r-180;
           var cover=obstacles.filter(function(o){return o.kind==="bush"&&Math.hypot(o.x+o.w/2-zone.x,o.y+o.h/2-zone.y)<zone.r-80;})
             .sort(function(a,b){return Math.hypot(a.x+a.w/2-p.x,a.y+a.h/2-p.y)-Math.hypot(b.x+b.w/2-p.x,b.y+b.h/2-p.y);})[0];
-          var tx=safe?zone.x:cover?cover.x+cover.w/2:zone.x,ty=safe?zone.y:cover?cover.y+cover.h/2:zone.y;
+          var tx=safe||endgame?zone.x:cover?cover.x+cover.w/2:zone.x,ty=safe||endgame?zone.y:cover?cover.y+cover.h/2:zone.y;
           if(Math.hypot(tx-p.x,ty-p.y)>55){var aa=Math.atan2(ty-p.y,tx-p.x);movePlayer(p,Math.cos(aa),Math.sin(aa),dt);p.walking=true;}
         }
       }
