@@ -346,10 +346,13 @@
     ctx.globalAlpha=1;ctx.restore();
   }
   function draw(){
-    ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);if(me){camera.x=clamp(me.x-W/(2*ZOOM),0,WORLD_W-W/ZOOM);camera.y=clamp(me.y-H/(2*ZOOM),0,WORLD_H-H/ZOOM);}ctx.save();ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
-    var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x,camera.y,viewWorldW+2,viewWorldH+2);
+    ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);if(me){camera.x=me.x-W/(2*ZOOM);camera.y=me.y-H/(2*ZOOM);}ctx.save();ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
+    var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
-    ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x,camera.y,viewWorldW+2,viewWorldH+2);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2,true);ctx.fillStyle="rgba(92,35,130,"+(.19+stormPulse*.09)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=24+stormPulse*18;ctx.strokeStyle="#ff6e9e";ctx.lineWidth=14;ctx.setLineDash([24,10]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="rgba(255,230,248,.9)";ctx.lineWidth=3;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-9,0,Math.PI*2);ctx.stroke();ctx.restore();
+    // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
+    ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=17;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=4;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();
+    // The world boundary stays visible, while the camera can follow the hero to its edge.
+    ctx.save();ctx.strokeStyle="rgba(56,85,57,.6)";ctx.lineWidth=10;ctx.setLineDash([30,15]);ctx.strokeRect(0,0,WORLD_W,WORLD_H);ctx.restore();
     obstacles.forEach(function(o){
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
       if(o.kind==="wall"){
@@ -376,7 +379,32 @@
     players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
     drawAimGuide();
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
-    drawMinimap();
+    drawMinimap();drawStormStatus();
+  }
+  // Screen-space storm indicator remains readable even if the ring is offscreen.
+  function drawStormStatus(){
+    if(!running||!me||!me.alive)return;
+    var distance=Math.hypot(me.x-zone.x,me.y-zone.y),outside=distance>zone.r;
+    var until=Math.max(0,5-elapsed),remaining=Math.max(0,zone.r-260);
+    var label=outside?"UDEN FOR ZONEN!":until>0?"ZONEN LUKKER OM "+Math.ceil(until)+"s":remaining>0?"ZONEN KRYMPER":"SIDSTE ZONE";
+    var x=22,y=18,w=outside?248:214,h=43;
+    ctx.save();ctx.fillStyle=outside?"rgba(113,26,73,.96)":"rgba(29,42,43,.88)";
+    ctx.beginPath();ctx.roundRect(x,y,w,h,12);ctx.fill();
+    ctx.strokeStyle=outside?"#ff8bb6":"rgba(255,255,255,.18)";ctx.lineWidth=2;ctx.stroke();
+    ctx.font="800 14px system-ui";ctx.textAlign="left";ctx.textBaseline="middle";
+    ctx.fillStyle=outside?"#fff":"#ffe3f1";ctx.fillText(label,x+13,y+16);
+    ctx.fillStyle="#f3a8cc";ctx.fillRect(x+13,y+30,w-26,4);
+    ctx.fillStyle="#fff";ctx.fillRect(x+13,y+30,(w-26)*clamp(zone.r/1780,0,1),4);
+    if(outside){
+      var a=Math.atan2(zone.y-me.y,zone.x-me.x),cx=W/2,cy=H/2;
+      ctx.save();ctx.translate(cx+Math.cos(a)*110,cy+Math.sin(a)*88);ctx.rotate(a);
+      ctx.fillStyle="#fff";ctx.strokeStyle="#9e245e";ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(18,0);ctx.lineTo(-13,-12);ctx.lineTo(-8,0);ctx.lineTo(-13,12);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      ctx.textAlign="center";ctx.font="900 17px system-ui";ctx.lineWidth=4;
+      ctx.strokeStyle="rgba(65,20,50,.9)";ctx.strokeText("LØB IND I ZONEN!",W/2,H-75);
+      ctx.fillStyle="#fff";ctx.fillText("LØB IND I ZONEN!",W/2,H-75);
+    }
+    ctx.restore();
   }
   // One unified scoreboard: minimap, match stats and elimination feed.
   function drawMinimap(){
