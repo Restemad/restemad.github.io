@@ -163,7 +163,7 @@
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
-    audioReady();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    audioReady();countdownLeft=3.15;countdownStep=0;countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
@@ -403,7 +403,7 @@
     root.querySelector("#arenaResultTitle").textContent=won?"DU VANDT! 🏆":"DU BLEV SLÅET UD!";
     root.querySelector("#arenaResultText").textContent=won?"Fantastisk! Du er den sidste tilbage.":"God kamp! Prøv igen, og se om du kan blive den sidste.";
     root.querySelector("#arenaResultStats").textContent=me.kills+" elimineringer · "+stats.trophies+" trofæer i alt";
-    root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;
+    root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;countdownOverlay.hidden=true;
     if(won){burst(me.x,me.y,"#ffe37a",42,240);ring(me.x,me.y,"#ffffff",120);}
     victoryBanner.hidden=!won;if(won){sound("win");victoryBanner.classList.remove("arena-victory-play");void victoryBanner.offsetWidth;victoryBanner.classList.add("arena-victory-play");}
   }
@@ -560,6 +560,18 @@
     ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);if(me){camera.x=me.x-W/(2*ZOOM);camera.y=me.y-H/(2*ZOOM);}ctx.save();if(screenShake>.1){ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));}ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
     var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
+    // Deterministic decorative terrain: paths and flowers only, never collision or bush hiding.
+    ctx.save();
+    ctx.strokeStyle="rgba(191,157,101,.23)";ctx.lineWidth=72;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(WORLD_W/2-1600,WORLD_H/2+290);ctx.bezierCurveTo(WORLD_W/2-680,WORLD_H/2-280,WORLD_W/2+440,WORLD_H/2+320,WORLD_W/2+1510,WORLD_H/2-240);ctx.stroke();
+    ctx.strokeStyle="rgba(255,238,186,.22)";ctx.lineWidth=4;ctx.setLineDash([18,30]);ctx.stroke();ctx.setLineDash([]);
+    var tile=155,ix0=Math.floor(camera.x/tile),ix1=Math.ceil((camera.x+viewWorldW)/tile),iy0=Math.floor(camera.y/tile),iy1=Math.ceil((camera.y+viewWorldH)/tile);
+    for(var ix=ix0;ix<=ix1;ix++){for(var iy=iy0;iy<=iy1;iy++){
+      var seed=Math.abs((ix*73856093)^(iy*19349663)),px=ix*tile+24+(seed%95),py=iy*tile+18+((seed>>>8)%100);
+      if(seed%5===0){ctx.fillStyle=seed%2?"#f4e69e":"#f7f4e5";for(var petal=0;petal<5;petal++){var ang=petal*Math.PI*2/5;ctx.beginPath();ctx.arc(px+Math.cos(ang)*4,py+Math.sin(ang)*4,2.8,0,Math.PI*2);ctx.fill();}ctx.fillStyle="#edbb55";ctx.beginPath();ctx.arc(px,py,2.5,0,Math.PI*2);ctx.fill();}
+      else if(seed%7===0){ctx.strokeStyle="rgba(60,116,52,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px-4,py+5);ctx.lineTo(px,py-4);ctx.lineTo(px+4,py+5);ctx.stroke();}
+    }}
+    ctx.restore();
     // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
     ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();
     // The expanded world boundaries are now far outside the storm play area.
@@ -697,7 +709,34 @@
     });
     ctx.restore();
   }
-  function loop(now){if(!running)return;var dt=Math.min((now-last)/1000,.035);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop);}
+  var countdownLeft=0,countdownStep=0;
+  var countdownOverlay=document.createElement("div");
+  countdownOverlay.className="arena-countdown";countdownOverlay.hidden=true;
+  countdownOverlay.innerHTML='<div class="arena-countdown-top">GØR DIG KLAR</div><div class="arena-countdown-number">3</div><div class="arena-countdown-bottom">SOLO SHOWDOWN</div>';
+  root.querySelector("#arenaCanvasWrap").appendChild(countdownOverlay);
+  function countdownTick(){
+    var n=Math.ceil(countdownLeft);
+    if(n!==countdownStep){
+      countdownStep=n;
+      var num=countdownOverlay.querySelector(".arena-countdown-number");
+      num.textContent=n>0?String(n):"KÆMP!";
+      num.classList.remove("arena-countdown-pulse");void num.offsetWidth;num.classList.add("arena-countdown-pulse");
+      if(n>0)tone(520+(3-n)*110,.16,"triangle",.18);
+      else {tone(880,.25,"triangle",.24);tone(1320,.4,"sine",.21,.09);ring(me.x,me.y,"#fff0a8",100);burst(me.x,me.y,"#ffe8a3",20,160);}
+    }
+  }
+  function loop(now){
+    if(!running)return;
+    var dt=Math.min((now-last)/1000,.035);last=now;
+    if(countdownLeft>0){
+      countdownLeft=Math.max(0,countdownLeft-dt);countdownTick();
+      if(countdownLeft===0){countdownOverlay.classList.add("arena-countdown-go");}
+    }else if(!countdownOverlay.hidden&&countdownLeft===0){
+      countdownOverlay.hidden=true;countdownOverlay.classList.remove("arena-countdown-go");
+      update(dt);
+    }else update(dt);
+    draw();if(running)raf=requestAnimationFrame(loop);
+  }
   function setCanvasSize(){
     var rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,isTouch()?1.25:2);
     canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));
@@ -734,7 +773,7 @@
     else{var leave=document.exitFullscreen||document.webkitExitFullscreen;if(leave)leave.call(document);}
   });
   document.addEventListener("fullscreenchange",syncFullscreenLabel);
-  root.querySelector("#arenaExit").addEventListener("click",function(){victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
+  root.querySelector("#arenaExit").addEventListener("click",function(){countdownOverlay.hidden=true;victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
   root.querySelector("#arenaOnline").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=false;});
   root.querySelector("#arenaOnlineClose").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=true;});
   window.addEventListener("keydown",function(e){var k=e.key.toLowerCase();keys[k]=true;if(k==="e"&&running){e.preventDefault();superPressed=true;}if(k==="shift"&&running){e.preventDefault();if(me&&me.alive&&me.dashCooldown<=0){me.dash=.24;me.dashCooldown=1.65;}}if([" ","arrowup","arrowdown","arrowleft","arrowright"].indexOf(k)>-1&&running)e.preventDefault();});
