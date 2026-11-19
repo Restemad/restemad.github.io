@@ -9,10 +9,8 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var buildCooldownUntil=0,editTarget=null,editCells=[true,true,true,true],lastBuildAt=0,buildDefaults={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"},buildBinds={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"};
-  try{Object.assign(buildBinds,JSON.parse(localStorage.getItem("restemad-build-binds-v1")||"{}"));}catch(e){}
   function freebuild(){return mode==="freebuild";}
   function buildUI(){var t=root.querySelector("#arenaBuildTouch");if(t){t.hidden=!running||!isTouch();t.querySelectorAll("[data-build-touch]").forEach(function(b){b.hidden=!freebuild()&&b.dataset.buildTouch!=="wall";});}}
-  function buildLabels(){root.querySelectorAll("[data-build-bind]").forEach(function(b){b.textContent=(buildBinds[b.dataset.buildBind]||"?").toUpperCase();});}
   var minimapTerrain=null;
   var terrainTileCache=new Map();
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
@@ -1225,13 +1223,10 @@
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
   
-  root.querySelector("#arenaBindToggle").addEventListener("click",function(){var p=root.querySelector("#arenaBindPanel");p.hidden=!p.hidden;});
   root.querySelectorAll("[data-edit-cell]").forEach(function(b){b.addEventListener("click",function(){var i=Number(b.dataset.editCell);editCells[i]=!editCells[i];syncEditPanel();});});
   root.querySelector("#arenaEditConfirm").addEventListener("click",confirmEdit);
   root.querySelector("#arenaEditReset").addEventListener("click",resetEdit);
   root.querySelectorAll("[data-build-touch]").forEach(function(b){b.addEventListener("pointerdown",function(e){e.preventDefault();e.stopPropagation();var a=b.dataset.buildTouch;if(a==="edit")editBuild();else placeBuild(a);});});
-  root.querySelectorAll("[data-build-bind]").forEach(function(b){b.addEventListener("click",function(){b.textContent="Tryk tast";function capture(e){e.preventDefault();e.stopPropagation();window.removeEventListener("keydown",capture,true);var key=e.key.toLowerCase();if(key!=="escape"&&!["control","alt","meta"].includes(key)){Object.keys(buildBinds).forEach(function(k){if(k!==b.dataset.buildBind&&buildBinds[k]===key)buildBinds[k]=buildBinds[b.dataset.buildBind];});buildBinds[b.dataset.buildBind]=key;try{localStorage.setItem("restemad-build-binds-v1",JSON.stringify(buildBinds));}catch(err){}}buildLabels();}window.addEventListener("keydown",capture,true);});});
-  root.querySelector("#arenaBuildReset").addEventListener("click",function(){buildBinds=Object.assign({},buildDefaults);try{localStorage.setItem("restemad-build-binds-v1",JSON.stringify(buildBinds));}catch(e){}buildLabels();});buildLabels();
   root.querySelector("#arenaRestart").addEventListener("click",function(){if(mode==="online"){root.querySelector("#arenaExit").click();return;}startGame(mode);});
   root.querySelector("#arenaExitResult").addEventListener("click",function(){root.querySelector("#arenaExit").click();});
   var fullscreenBtn=root.querySelector("#arenaFullscreen");
