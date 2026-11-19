@@ -226,6 +226,14 @@
   root.querySelector("#arenaPractice").addEventListener("click",function(){startGame("practice");});
   root.querySelector("#arenaRestart").addEventListener("click",function(){startGame(mode);});
   root.querySelector("#arenaExitResult").addEventListener("click",function(){root.querySelector("#arenaExit").click();});
+  var fullscreenBtn=root.querySelector("#arenaFullscreen");
+  function syncFullscreenLabel(){fullscreenBtn.textContent=document.fullscreenElement?"⤢ Afslut fuld skærm":"⛶ Fuld skærm";}
+  fullscreenBtn.addEventListener("click",function(){
+    var wrap=root.querySelector("#arenaCanvasWrap");
+    if(!document.fullscreenElement){var request=wrap.requestFullscreen||wrap.webkitRequestFullscreen;if(request){var result=request.call(wrap);if(result&&result.catch)result.catch(function(){fullscreenBtn.textContent="Fuld skærm ikke tilgængelig";});}}
+    else{var leave=document.exitFullscreen||document.webkitExitFullscreen;if(leave)leave.call(document);}
+  });
+  document.addEventListener("fullscreenchange",syncFullscreenLabel);
   root.querySelector("#arenaExit").addEventListener("click",function(){running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
   root.querySelector("#arenaOnline").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=false;});
   root.querySelector("#arenaOnlineClose").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=true;});
