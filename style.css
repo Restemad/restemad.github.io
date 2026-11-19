@@ -66,17 +66,35 @@ a{color:var(--forest)}
 .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
 .eyebrow{display:inline-block;background:var(--white);color:var(--forest);font-weight:600;font-size:.85rem;letter-spacing:.06em;padding:8px 16px;border-radius:999px;margin-bottom:20px;box-shadow:var(--shadow)}
 .lead{font-size:1.2rem;max-width:520px;margin-top:20px}
-.hero-text>*{opacity:0;transform:translateY(24px);animation:rise .8s ease forwards}
-.hero-text>*:nth-child(1){animation-delay:.15s}.hero-text>*:nth-child(2){animation-delay:.3s}.hero-text>*:nth-child(3){animation-delay:.45s}.hero-text>*:nth-child(4){animation-delay:.6s}
-@keyframes rise{to{opacity:1;transform:none}}
-.hero-art{display:grid;place-items:center;opacity:0;animation:pop 1s .4s ease forwards}
-@keyframes pop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
-.plate{position:relative;width:min(100%,430px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--light) 70%);box-shadow:var(--shadow-lg),inset 0 0 0 14px rgba(255,255,255,.7);display:grid;place-items:center}
-.plate::after{content:"";position:absolute;inset:11%;border-radius:50%;border:2px dashed rgba(35,75,54,.18)}
-.plate-main{font-size:clamp(5rem,16vw,8.5rem);filter:drop-shadow(0 12px 14px rgba(35,75,54,.25))}
-.f{position:absolute;font-size:clamp(2rem,6vw,3rem);background:var(--white);width:1.9em;height:1.9em;display:grid;place-items:center;border-radius:50%;box-shadow:var(--shadow);animation:float 5s ease-in-out infinite}
-.f1{top:6%;left:14%}.f2{top:14%;right:6%;animation-delay:-1s}.f3{bottom:8%;left:8%;animation-delay:-2s}.f4{bottom:6%;right:16%;animation-delay:-3s}.f5{top:46%;left:-4%;animation-delay:-1.5s}.f6{top:42%;right:-3%;animation-delay:-2.5s}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+/* Home hero: smooth, continuous motion with a restrained, clean look. */
+.hero-text>*{opacity:0;transform:translateY(22px);animation:home-enter .85s cubic-bezier(.2,.75,.25,1) both}
+.hero-text>*:nth-child(1){animation-delay:.08s}
+.hero-text>*:nth-child(2){animation-delay:.18s}
+.hero-text>*:nth-child(3){animation-delay:.3s}
+.hero-text>*:nth-child(4){animation-delay:.42s}
+@keyframes home-enter{to{opacity:1;transform:translateY(0)}}
+.hero-art{display:grid;place-items:center;opacity:0;animation:home-art-enter 1s .25s cubic-bezier(.2,.75,.25,1) both}
+@keyframes home-art-enter{from{opacity:0;transform:translateY(20px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+.plate{position:relative;width:min(100%,430px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--light) 70%);box-shadow:var(--shadow-lg),inset 0 0 0 14px rgba(255,255,255,.7);display:grid;place-items:center;isolation:isolate}
+.plate::before{content:"";position:absolute;inset:7%;border-radius:50%;border:1px solid rgba(35,75,54,.12);pointer-events:none}
+.plate::after{content:"";position:absolute;inset:19%;border-radius:50%;border:2px dashed rgba(35,75,54,.17);animation:home-ring 45s linear infinite;pointer-events:none}
+@keyframes home-ring{to{transform:rotate(360deg)}}
+.plate-main{position:relative;z-index:2;font-size:clamp(5rem,16vw,8.5rem);filter:drop-shadow(0 12px 14px rgba(35,75,54,.25));animation:home-salad 5s ease-in-out infinite}
+@keyframes home-salad{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(2deg)}}
+/* Six evenly spaced food bubbles orbit the salad. Negative delays start them in position immediately. */
+.plate .f{position:absolute;z-index:3;top:50%;left:50%;right:auto;bottom:auto;width:clamp(55px,6.2vw,78px);height:clamp(55px,6.2vw,78px);margin-left:calc(clamp(55px,6.2vw,78px)/-2);margin-top:calc(clamp(55px,6.2vw,78px)/-2);font-size:clamp(1.8rem,3.8vw,2.65rem);background:var(--white);display:grid;place-items:center;border:1px solid rgba(35,75,54,.08);border-radius:50%;box-shadow:0 10px 28px rgba(35,75,54,.14);--orbit-radius:clamp(115px,14vw,184px);animation:home-orbit 22s linear infinite;will-change:transform}
+.plate .f1{animation-delay:0s}
+.plate .f2{animation-delay:-3.6667s}
+.plate .f3{animation-delay:-7.3333s}
+.plate .f4{animation-delay:-11s}
+.plate .f5{animation-delay:-14.6667s}
+.plate .f6{animation-delay:-18.3333s}
+@keyframes home-orbit{
+  from{transform:rotate(-90deg) translateX(var(--orbit-radius)) rotate(90deg)}
+  to{transform:rotate(270deg) translateX(var(--orbit-radius)) rotate(-270deg)}
+}
+@media(max-width:600px){.plate .f{--orbit-radius:clamp(98px,30vw,143px);width:56px;height:56px;margin-left:-28px;margin-top:-28px;font-size:2rem}}
+@media(prefers-reduced-motion:reduce){.plate .f,.plate-main,.plate::after{animation:none!important}.plate .f1{transform:translate(0,-120px)}.plate .f2{transform:translate(105px,-60px)}.plate .f3{transform:translate(105px,60px)}.plate .f4{transform:translate(0,120px)}.plate .f5{transform:translate(-105px,60px)}.plate .f6{transform:translate(-105px,-60px)}}
 
 /* Sektioner */
 .section{padding:clamp(54px,8vw,92px) 0}
