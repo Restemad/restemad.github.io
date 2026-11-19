@@ -5,7 +5,7 @@
   if (!root) return;
 
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
-  var W = 960, H = 600, ZOOM = .76, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
+  var W = 960, H = 600, ZOOM = .5, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], obstacles = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, dashHeld = false;
@@ -118,6 +118,7 @@
       if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=16*dt;if(p.hp<=0){p.hp=0;p.alive=false;if(p===me){finish(false);}else if(me&&me.alive){me.kills++;}}}
       if(p.human){
+        p.walking=Math.hypot(dx,dy)>.08;
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
         if(touchDash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
         var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
@@ -129,6 +130,7 @@
         else p.angle=Math.atan2(pointer.y/ZOOM+camera.y-p.y,pointer.x/ZOOM+camera.x-p.x);
         if(pointer.down||keys[" "]||touchFire)shoot(p,p.angle);
       }else{
+        p.walking=false;
         p.ai-=dt;
         if(p.ai<=0){p.target=nearest(p,true)||nearest(p,false);p.ai=rand(.32,.62);}
         var t=p.target&&p.target.alive?p.target:nearest(p,true)||nearest(p,false);
@@ -140,6 +142,7 @@
           if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
           if(!visible){var side=(Math.sin(elapsed+p.y*.01)>0?1:-1);mx+=-Math.sin(a)*side*.85;my+=Math.cos(a)*side*.85;}
           else {mx-=Math.sin(a)*strafe;my+=Math.cos(a)*strafe;}
+          p.walking=Math.hypot(mx,my)>.08;
           movePlayer(p,mx,my,dt);
           if(visible&&d<p.range*.9&&Math.random()<.58)shoot(p,a+rand(-.045,.045),t);
         }
@@ -173,7 +176,7 @@
     root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;
   }
   function drawFoodHero(p,now){
-    var f=foods[p.fighter],phase=now*.006+p.x*.013,step=running?Math.sin(phase):0,bob=Math.abs(step)*2;
+    var f=foods[p.fighter],phase=now*.006+p.x*.013,step=(p.walking?Math.sin(phase):0),bob=Math.abs(step)*2;
     var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),dark="#4b3024";
     ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12);
     // Ground shadow, chunky boots and gloves create a toy-hero silhouette.
@@ -267,9 +270,9 @@
         [[.3,.48,.32],[.58,.36,.34],[.72,.58,.25],[.42,.24,.27]].forEach(function(v){var gg=ctx.createRadialGradient(o.x+o.w*v[0]-5,o.y+o.h*v[1]-7,2,o.x+o.w*v[0],o.y+o.h*v[1],o.h*v[2]);gg.addColorStop(0,"#91d878");gg.addColorStop(1,"#347b43");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(o.x+o.w*v[0],o.y+o.h*v[1]-pulse*.15,o.h*v[2],0,Math.PI*2);ctx.fill();});
       }
     });
-    drawAimGuide();
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
-    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.fillRect(p.x-22,p.y-34,44,6);ctx.fillStyle="#62C96B";ctx.fillRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6);if(p.human){ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText("DIG",p.x,p.y-48);}});
+    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
+    drawAimGuide();
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});ctx.restore();
   }
   function loop(now){if(!running)return;var dt=Math.min((now-last)/1000,.035);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop);}
