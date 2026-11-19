@@ -35,7 +35,7 @@
   }
   function buildSelect(){
     root.querySelector("#arenaFighters").innerHTML=foods.map(function(f,i){
-      return '<button type="button" class="arena-fighter'+(i===selected?" chosen":"")+'" data-fighter="'+i+'" aria-pressed="'+(i===selected)+'"><span class="fighter-emoji">'+f.emoji+'</span><b>'+f.name+'</b><small>'+f.hp+' liv · '+(f.damage*f.count)+' skade pr. salve</small></button>';
+      return '<button type="button" class="arena-fighter'+(i===selected?" chosen":"")+'" data-fighter="'+i+'" aria-pressed="'+(i===selected)+'"><span class="fighter-preview fighter-preview-'+i+'"><i></i><b></b></span><b>'+f.name+'</b><small>'+f.hp+' liv · '+(f.damage*f.count)+' skade pr. salve</small></button>';
     }).join("");
     root.querySelector("#arenaFighterDesc").textContent=foods[selected].desc;
   }
