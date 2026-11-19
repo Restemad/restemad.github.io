@@ -44,8 +44,15 @@
     for(var i=0;i<170;i++){var x=rand(100,WORLD_W-130),y=rand(100,WORLD_H-120),t=Math.random();obstacles.push({x:x,y:y,w:t<.3?rand(110,175):rand(48,105),h:t<.3?rand(90,145):rand(42,100),bush:t>.72,kind:t<.3?"wall":t<.72?"rock":"bush"});}
     [[650,500],[1800,380],[3000,650],[950,1650],[2350,1750],[3300,1500]].forEach(function(p){for(var j=0;j<7;j++)obstacles.push({x:p[0]+rand(-180,180),y:p[1]+rand(-150,150),w:rand(55,125),h:rand(50,110),bush:j%3===0,kind:j%3===0?"bush":"rock"});});
   }
+  function obstacleHit(o,x,y,pad){
+    if(o.kind==="bush")return false;
+    pad=pad||0;
+    if(o.kind==="wall")return x>o.x-pad&&x<o.x+o.w+pad&&y>o.y-pad&&y<o.y+o.h+pad;
+    var rx=o.w*.5+pad,ry=o.h*.5+pad,dx=(x-(o.x+o.w*.5))/rx,dy=(y-(o.y+o.h*.5))/ry;
+    return dx*dx+dy*dy<1;
+  }
   function freeSpot(away){
-    var p;for(var i=0;i<240;i++){p={x:rand(130,WORLD_W-130),y:rand(130,WORLD_H-130)};var clear=!obstacles.some(function(o){return p.x>o.x-55&&p.x<o.x+o.w+55&&p.y>o.y-55&&p.y<o.y+o.h+55;});if(clear&&(!away||Math.hypot(p.x-away.x,p.y-away.y)>850))return p;}return p;
+    var p;for(var i=0;i<320;i++){p={x:rand(130,WORLD_W-130),y:rand(130,WORLD_H-130)};var clear=!obstacles.some(function(o){return obstacleHit(o,p.x,p.y,58);});if(clear&&(!away||Math.hypot(p.x-away.x,p.y-away.y)>850))return p;}return p;
   }
   function spawn(i,isHuman){
     var f=foods[i],p=freeSpot(isHuman?null:me);
@@ -59,7 +66,7 @@
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me),sx=sectors[i][0],sy=sectors[i][1];
       for(var tries=0;tries<100;tries++){
         var test={x:clamp(sx+rand(-240,240),120,WORLD_W-120),y:clamp(sy+rand(-190,190),120,WORLD_H-120)};
-        if(!obstacles.some(function(o){return test.x>o.x-50&&test.x<o.x+o.w+50&&test.y>o.y-50&&test.y<o.y+o.h+50;})&&players.every(function(q){return Math.hypot(q.x-test.x,q.y-test.y)>540;})){p=test;break;}
+        if(!obstacles.some(function(o){return obstacleHit(o,test.x,test.y,55);})&&players.every(function(q){return Math.hypot(q.x-test.x,q.y-test.y)>540;})){p=test;break;}
       }
       var food=foods[f];players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:food.hp,maxHp:food.hp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage,rate:food.rate,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0});
     }
@@ -85,7 +92,7 @@
     var dx=b.x-a.x,dy=b.y-a.y,steps=Math.max(4,Math.ceil(Math.hypot(dx,dy)/18));
     for(var i=1;i<steps;i++){
       var x=a.x+dx*i/steps,y=a.y+dy*i/steps;
-      for(var j=0;j<obstacles.length;j++){var o=obstacles[j];if(x>o.x-5&&x<o.x+o.w+5&&y>o.y-5&&y<o.y+o.h+5)return false;}
+      for(var j=0;j<obstacles.length;j++){var o=obstacles[j];if(obstacleHit(o,x,y,5))return false;}
     }
     return true;
   }
@@ -105,10 +112,10 @@
     var len=Math.hypot(dx,dy);if(len>1){dx/=len;dy/=len;}
     var boost=multiplier||1;
     var nx=clamp(p.x+dx*p.speed*boost*dt,p.r,WORLD_W-p.r),ny=clamp(p.y+dy*p.speed*boost*dt,p.r,WORLD_H-p.r);
-    var hit=obstacles.some(function(o){return nx+p.r>o.x&&nx-p.r<o.x+o.w&&ny+p.r>o.y&&ny-p.r<o.y+o.h;});
+    var hit=obstacles.some(function(o){return obstacleHit(o,nx,ny,p.r);});
     if(!hit){p.x=nx;p.y=ny;}else{
-      if(!obstacles.some(function(o){return nx+p.r>o.x&&nx-p.r<o.x+o.w&&p.y+p.r>o.y&&p.y-p.r<o.y+o.h;}))p.x=nx;
-      if(!obstacles.some(function(o){return p.x+p.r>o.x&&p.x-p.r<o.x+o.w&&ny+p.r>o.y&&ny-p.r<o.y+o.h;}))p.y=ny;
+      if(!obstacles.some(function(o){return obstacleHit(o,nx,p.y,p.r);}))p.x=nx;
+      if(!obstacles.some(function(o){return obstacleHit(o,p.x,ny,p.r);}))p.y=ny;
     }
   }
   function update(dt){
@@ -150,7 +157,7 @@
     });
     bullets=bullets.filter(function(b){
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-      var wall=obstacles.some(function(o){return b.x>o.x&&b.x<o.x+o.w&&b.y>o.y&&b.y<o.y+o.h;});
+      var wall=obstacles.some(function(o){return obstacleHit(o,b.x,b.y,b.r);});
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
       for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner){var rx=(p.hitRx||p.r)+b.r,ry=(p.hitRy||p.r)+b.r,dx=(b.x-p.x)/rx,dy=(b.y-p.y)/ry;if(dx*dx+dy*dy<=1){hit=p;break;}}}
@@ -237,11 +244,10 @@
     var color=foods[p.fighter].color;
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
     ctx.lineCap="round";ctx.lineJoin="round";
-    // Forearm and glove reach forward; the gun is drawn over the gripping hand.
-    ctx.strokeStyle="#573b2a";ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-13,8);ctx.quadraticCurveTo(-5,3,-1,1);ctx.stroke();
-    ctx.strokeStyle="#d39a69";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-12,6);ctx.quadraticCurveTo(-5,2,-1,1);ctx.stroke();
-    ctx.fillStyle="#f0c18b";ctx.strokeStyle="#70472e";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(-1,1,7,6,-.2,0,Math.PI*2);ctx.fill();ctx.stroke();
-    ctx.fillStyle="rgba(255,255,255,.32)";ctx.beginPath();ctx.ellipse(-3,-2,3,1.5,-.3,0,Math.PI*2);ctx.fill();
+    // The arm reaches the grip; recoil pulls the elbow back briefly.
+    var kick=clamp((p.recoil||0)/.16,0,1);
+    ctx.strokeStyle="#573b2a";ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(-15,10);ctx.quadraticCurveTo(-9+kick*5,5+kick*3,-3+kick*3,2+kick*2);ctx.stroke();
+    ctx.strokeStyle="#d39a69";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-15,8);ctx.quadraticCurveTo(-9+kick*5,4+kick*3,-3+kick*3,2+kick*2);ctx.stroke();
     // Rear grip and stock, visible against the fighter's body.
     ctx.fillStyle="#493326";ctx.strokeStyle="#30251f";ctx.lineWidth=2.5;
     ctx.beginPath();ctx.roundRect(-12,-7,19,14,4);ctx.fill();ctx.stroke();
@@ -275,8 +281,13 @@
     ctx.strokeStyle="rgba(255,255,255,.62)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(3,-8);ctx.lineTo(25,-8);ctx.stroke();
     ctx.strokeStyle="rgba(35,25,18,.48)";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(2,9);ctx.lineTo(27,9);ctx.stroke();
     ctx.fillStyle="rgba(255,255,255,.18)";ctx.beginPath();ctx.roundRect(1,-5,17,2,1);ctx.fill();
-    // Tiny muzzle glint makes the barrel direction obvious even while idle.
-    ctx.fillStyle="#fff4c7";ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(34,0,2.5,0,Math.PI*2);ctx.fill();
+    // Short muzzle flash and hand movement when the fighter fires.
+    var kick=clamp((p.recoil||0)/.16,0,1);
+    if(kick>.08){ctx.globalAlpha=kick;ctx.fillStyle="#fff0a6";ctx.shadowColor=color;ctx.shadowBlur=18;ctx.beginPath();ctx.moveTo(32,-5);ctx.lineTo(45,0);ctx.lineTo(32,5);ctx.lineTo(36,0);ctx.closePath();ctx.fill();ctx.shadowBlur=0;}
+    ctx.globalAlpha=1;
+    // Glove overlaps the rear grip so the weapon visibly sits in the hand.
+    ctx.fillStyle="#f0c18b";ctx.strokeStyle="#70472e";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(-3,2+kick*2,7,6,-.25,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.38)";ctx.beginPath();ctx.ellipse(-5,-1+kick*2,3,1.6,-.3,0,Math.PI*2);ctx.fill();
     ctx.restore();
   }
   function drawAimGuide(){
@@ -309,15 +320,20 @@
         ctx.fillStyle="#647866";ctx.beginPath();ctx.moveTo(o.x,o.y+lift);ctx.lineTo(o.x+o.w,o.y+lift);ctx.lineTo(o.x+o.w,o.y+o.h+lift);ctx.lineTo(o.x,o.y+o.h+lift);ctx.closePath();ctx.fill();
         ctx.fillStyle="#aebca5";ctx.strokeStyle="#63755e";ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(o.x,o.y,o.w,o.h,10);ctx.fill();ctx.stroke();
         ctx.fillStyle="rgba(255,255,255,.22)";ctx.fillRect(o.x+9,o.y+5,o.w-18,5);
+        ctx.strokeStyle="rgba(74,94,73,.28)";ctx.lineWidth=2;
+        for(var by=1;by<4;by++){var yy=o.y+by*o.h/4;ctx.beginPath();ctx.moveTo(o.x+5,yy);ctx.lineTo(o.x+o.w-5,yy);ctx.stroke();}
+        for(var bx=1;bx<4;bx++){var xx=o.x+bx*o.w/4;ctx.beginPath();ctx.moveTo(xx,o.y+3);ctx.lineTo(xx,o.y+o.h-3);ctx.stroke();}
       }else if(o.kind==="rock"){
         ctx.fillStyle="#65766d";ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2+lift,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
         var rg=ctx.createLinearGradient(o.x,o.y,o.x+o.w,o.y+o.h);rg.addColorStop(0,"#e1e8db");rg.addColorStop(.45,"#9eafa2");rg.addColorStop(1,"#667c70");
         ctx.fillStyle=rg;ctx.strokeStyle="#5d7467";ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();ctx.stroke();
         ctx.fillStyle="rgba(255,255,255,.28)";ctx.beginPath();ctx.ellipse(o.x+o.w*.34,o.y+o.h*.3,o.w*.19,o.h*.12,-.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(65,91,72,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x+o.w*.25,o.y+o.h*.62);ctx.lineTo(o.x+o.w*.43,o.y+o.h*.52);ctx.moveTo(o.x+o.w*.55,o.y+o.h*.72);ctx.lineTo(o.x+o.w*.72,o.y+o.h*.59);ctx.stroke();
+        ctx.fillStyle="rgba(255,255,255,.2)";ctx.beginPath();ctx.arc(o.x+o.w*.62,o.y+o.h*.27,2.5,0,Math.PI*2);ctx.arc(o.x+o.w*.42,o.y+o.h*.76,2,0,Math.PI*2);ctx.fill();
       }else{
         var pulse=Math.sin(performance.now()*.002+o.x*.02)*2;
         ctx.fillStyle="#285e38";ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2+lift,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
-        [[.3,.48,.32],[.58,.36,.34],[.72,.58,.25],[.42,.24,.27]].forEach(function(v){var gg=ctx.createRadialGradient(o.x+o.w*v[0]-5,o.y+o.h*v[1]-7,2,o.x+o.w*v[0],o.y+o.h*v[1],o.h*v[2]);gg.addColorStop(0,"#91d878");gg.addColorStop(1,"#347b43");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(o.x+o.w*v[0],o.y+o.h*v[1]-pulse*.15,o.h*v[2],0,Math.PI*2);ctx.fill();});
+        [[.3,.48,.32],[.58,.36,.34],[.72,.58,.25],[.42,.24,.27],[.18,.66,.22],[.82,.28,.2]].forEach(function(v){var gg=ctx.createRadialGradient(o.x+o.w*v[0]-5,o.y+o.h*v[1]-7,2,o.x+o.w*v[0],o.y+o.h*v[1],o.h*v[2]);gg.addColorStop(0,"#a5e58a");gg.addColorStop(.55,"#5eae58");gg.addColorStop(1,"#28633a");ctx.fillStyle=gg;ctx.beginPath();ctx.arc(o.x+o.w*v[0],o.y+o.h*v[1]-pulse*.15,o.h*v[2],0,Math.PI*2);ctx.fill();});
+        ctx.strokeStyle="rgba(225,255,205,.35)";ctx.lineWidth=1.5;for(var leaf=0;leaf<5;leaf++){var lx=o.x+o.w*(.2+leaf*.14),ly=o.y+o.h*(.35+(leaf%2)*.22)-pulse*.15;ctx.beginPath();ctx.moveTo(lx-4,ly+3);ctx.quadraticCurveTo(lx,ly-7,lx+5,ly);ctx.stroke();}
       }
     });
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
