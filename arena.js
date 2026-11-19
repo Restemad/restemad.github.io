@@ -11,6 +11,7 @@
   var terrainTileCache=new Map();
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netSequence=0, netLastDraw=0;
+  var spectateTarget=null,spectateBar=null,spectateName=null;
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
   var audioCtx=null,lastShotSfx=0,audioMaster=null,audioMuted=false;
@@ -165,7 +166,7 @@
     var f=foods[i],p=freeSpot(isHuman?null:me);
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
-  function startGame(which){net=null;
+  function startGame(which){net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;focusGame(true);
     audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
@@ -414,8 +415,45 @@
       finish(me.alive&&alive.length===1);
     }
   }
+  // Online spectators keep receiving snapshots, but can no longer control a fighter.
+  function livingSpectateTargets(){return players.filter(function(p){return p.alive&&p!==me;});}
+  function updateSpectator(){
+    if(!net||!me||me.alive||gameOver){if(spectateBar)spectateBar.hidden=true;return;}
+    var living=livingSpectateTargets();
+    if(!living.length){if(spectateBar)spectateBar.hidden=true;return;}
+    if(!spectateTarget||!spectateTarget.alive||spectateTarget===me)spectateTarget=living[0];
+    if(!spectateBar){
+      spectateBar=document.createElement("div");
+      spectateBar.style.cssText="position:absolute;left:50%;top:18px;transform:translateX(-50%);z-index:12;background:rgba(16,33,28,.93);color:white;padding:10px 14px;border-radius:14px;display:flex;align-items:center;gap:12px;font:700 14px system-ui;box-shadow:0 4px 20px #0005;max-width:95%;";
+      var prev=document.createElement("button"),next=document.createElement("button");
+      prev.type=next.type="button";prev.textContent="◀";next.textContent="▶";
+      [prev,next].forEach(function(b){b.style.cssText="cursor:pointer;background:#345b49;border:1px solid #9cd6b1;border-radius:8px;color:white;padding:8px 12px";});
+      spectateName=document.createElement("span");
+      spectateBar.append(prev,spectateName,next);
+      prev.addEventListener("click",function(){cycleSpectator(-1);});
+      next.addEventListener("click",function(){cycleSpectator(1);});
+      root.querySelector("#arenaCanvasWrap").appendChild(spectateBar);
+    }
+    spectateBar.hidden=false;
+    spectateName.textContent="👁 SER PÅ: "+String(spectateTarget.name||"Spiller");
+    root.querySelector("#arenaHint").textContent="Du er slået ud – du ser nu de overlevende spillere.";
+    root.querySelector("#arenaTouch").hidden=true;
+  }
+  function cycleSpectator(direction){
+    var living=livingSpectateTargets();if(!living.length)return;
+    var index=living.indexOf(spectateTarget);
+    spectateTarget=living[(index+direction+living.length)%living.length];
+    updateSpectator();
+  }
+  function focusGame(active){
+    document.body.classList.toggle("restemad-in-game",!!active);
+  }
+  var focusStyle=document.createElement("style");
+  // Only skip offscreen page layout/paint while a match is running.
+  focusStyle.textContent="body.restemad-in-game #view-home > section:not(#quiz){content-visibility:auto;contain-intrinsic-size:auto 600px}";
+  document.head.appendChild(focusStyle);
   function finish(won){
-    if(gameOver)return;gameOver=true;running=false;cancelAnimationFrame(raf);
+    if(gameOver)return;gameOver=true;running=false;cancelAnimationFrame(raf);focusGame(false);if(spectateBar)spectateBar.hidden=true;
     if(net&&net.host)sendNetSnapshot(true);
     if(net)root.querySelector("#arenaRestart").hidden=true;
     stats.games++;if(won){stats.wins++;stats.trophies+=8;}else stats.trophies=Math.max(0,stats.trophies-1);
@@ -577,7 +615,7 @@
     ctx.globalAlpha=1;ctx.restore();
   }
   function draw(){
-    ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);if(me){camera.x=me.x-W/(2*ZOOM);camera.y=me.y-H/(2*ZOOM);}ctx.save();if(screenShake>.1){ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));}ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
+    ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);var viewPlayer=net&&!me.alive&&spectateTarget&&spectateTarget.alive?spectateTarget:me;if(viewPlayer){camera.x=viewPlayer.x-W/(2*ZOOM);camera.y=viewPlayer.y-H/(2*ZOOM);}ctx.save();if(screenShake>.1){ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));}ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
     var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
     // Deterministic decorative terrain: paths and flowers only, never collision or bush hiding.
@@ -629,7 +667,7 @@
     });
     bullets.forEach(function(b){if(b.x<camera.x-30||b.x>camera.x+viewWorldW+30||b.y<camera.y-30||b.y>camera.y+viewWorldH+30)return;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
     effects.forEach(function(e){var t=1-e.life/e.max;ctx.save();ctx.globalAlpha=(1-t)*.75;ctx.strokeStyle=e.color;ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(e.x,e.y,e.r*(.3+t),0,Math.PI*2);ctx.stroke();ctx.restore();});
-    players.forEach(function(p){if(!p.alive||p.x<camera.x-80||p.x>camera.x+viewWorldW+80||p.y<camera.y-80||p.y>camera.y+viewWorldH+80||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);
+    players.forEach(function(p){if(!p.alive||p.x<camera.x-80||p.x>camera.x+viewWorldW+80||p.y<camera.y-80||p.y>camera.y+viewWorldH+80||p!==me&&!(net&&!me.alive)&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);
       if(p.shield>0){ctx.save();var shieldPulse=1+Math.sin(elapsed*9)*.045;ctx.globalAlpha=.74;ctx.strokeStyle="#8cf0ff";ctx.lineWidth=6;ctx.shadowColor="#8cf0ff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(p.x,p.y,42*shieldPulse,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.13;ctx.fillStyle="#75eaff";ctx.fill();ctx.restore();}
       if(p.superFlash>0){ctx.save();ctx.globalAlpha=clamp(p.superFlash,0,1);ctx.strokeStyle="#ffe37a";ctx.shadowColor="#ffe37a";ctx.shadowBlur=15;ctx.lineWidth=7;ctx.beginPath();ctx.arc(p.x,p.y,45+(1.05-p.superFlash)*55,0,Math.PI*2);ctx.stroke();ctx.restore();}
       // Clearly show HP above every visible opponent, not just the local player.
@@ -809,6 +847,7 @@
       if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Ingen kampdata fra værten. I spiller ikke synkroniseret.";
     }else{
       update(dt);
+      if(net&&net.host&&!me.alive)updateSpectator();
       if(net&&net.host&&now-netLastSend>(players.length>2?200:120)){netLastSend=now;sendNetSnapshot(false);}
     }
     // The guest draws at 40 FPS instead of redrawing the whole large map at 60+ FPS.
@@ -845,11 +884,12 @@
     root.querySelector("#arenaAlive").textContent=players.filter(function(p){return p.alive;}).length;
     root.querySelector("#arenaKills").textContent=me.kills||0;
     root.querySelector("#arenaClock").textContent=Math.floor(elapsed/60)+":"+String(Math.floor(elapsed%60)).padStart(2,"0");
+    if(!snap.done)updateSpectator();
     if(snap.done&&!gameOver)finish(me.alive&&snap.winner===net.userId);
   }
   function startOnline(cfg){
     if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
-    audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};
+    audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};spectateTarget=null;if(spectateBar)spectateBar.hidden=true;focusGame(true);
     netInputs=Object.create(null);netInputAt=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=0;netSequence=0;netLastDraw=0;
     players=[];me=null;bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     // All clients generate the exact same map from the room ID.
