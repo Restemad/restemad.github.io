@@ -153,3 +153,9 @@
  #arenaCanvasWrap.playing .arena-hint{display:none}
  #arenaCanvasWrap.playing .arena-hud .btn{min-height:32px!important;padding:4px 8px!important;font-size:.75rem}
 }
+
+/* Super action: reachable on iPad without blocking the aim stick. */
+#arenaGame .arena-super{width:76px;height:76px;border:3px solid #fff2ac;border-radius:50%;background:linear-gradient(145deg,#ffe98e,#e5aa30);color:#4b3209;font-weight:900;font-size:13px;box-shadow:0 5px 16px #34281266;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+#arenaGame .arena-super:active{transform:scale(.94)}
+@media(hover:none),(pointer:coarse){#arenaGame .arena-touch{padding-bottom:max(12px,env(safe-area-inset-bottom,12px));gap:8px}#arenaGame .arena-touch>div{gap:8px!important}#arenaGame .arena-stick{width:108px;height:108px}#arenaGame .arena-fire{width:74px;height:74px}#arenaGame .arena-dash{min-width:64px;min-height:64px}#arenaGame .arena-super{width:70px;height:70px}}
+@media(max-width:760px) and (orientation:portrait){#arenaGame .arena-touch>div{gap:5px!important}#arenaGame .arena-stick{width:84px;height:84px}#arenaGame .arena-fire,#arenaGame .arena-super{width:58px;height:58px;font-size:11px}#arenaGame .arena-dash{min-width:54px;min-height:54px;font-size:11px}}
