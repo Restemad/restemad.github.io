@@ -61,7 +61,7 @@
     el("arenaRoomStart").hidden=!host||!waiting;
     el("arenaRoomStart").disabled=people.length<2;
     if(!waiting&&!launched&&people.length>=2)launch(r.data,people).catch(error);
-    el("arenaRoomStatus").textContent=waiting?(people.length<2?"Venter på mindst 2 spillere…":host?"I er klar! Værten kan starte.":"Venter på, at værten starter."):"Kampen er startet! Forbinder til onlinekampen…";
+    if(waiting||!launched)el("arenaRoomStatus").textContent=waiting?(people.length<2?"Venter på mindst 2 spillere…":host?"I er klar! Værten kan starte.":"Venter på, at værten starter."):"Kampen er startet! Forbinder til onlinekampen…";
   }
   function showRoom(code){
     if(initTimer){clearInterval(initTimer);initTimer=null;}if(channel){setup().removeChannel(channel);channel=null;}launched=false;
@@ -105,39 +105,82 @@
   });});
   async function launch(data,people){
     if(launched)return;launched=true;
+    var ch=null;
     try{
       var uid=await login(),isHost=uid===data.host_id,game=window.RESTEMAD_ONLINE_GAME;
-      if(new Set(people.map(function(p){return p.user_id;})).size!==people.length)throw Error("Spillerlisten indeholder dubletter.");
       if(!game)throw Error("Online-spilmotoren blev ikke indlæst.");
-      var ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false}}});
-      channel=ch;var started=false;
-      ch.on("broadcast",{event:"input"},function(e){if(isHost&&e.payload)game.input(e.payload.userId,e.payload.input);});
-      ch.on("broadcast",{event:"state"},function(e){if(!isHost&&started)game.receive(e.payload);});
-      ch.on("broadcast",{event:"init"},function(e){
-        if(isHost||started||!e.payload||e.payload.roomId!==data.id)return;
-        if(!Array.isArray(e.payload.roster)||!e.payload.roster.some(function(p){return p.user_id===uid}))return;
+      if(new Set(people.map(function(p){return p.user_id;})).size!==people.length)throw Error("Spillerlisten indeholder dubletter.");
+      if(!people.some(function(p){return p.user_id===uid}))throw Error("Din spiller findes ikke i rummet.");
+      ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false,ack:true}}});
+      channel=ch;
+      var started=false, ready=new Set([uid]), init={roomId:data.id,roster:people};
+      var statusEl=el("arenaRoomStatus");
+      function broadcast(event,payload){return ch.send({type:"broadcast",event:event,payload:payload});}
+      function begin(){
+        if(started||!isHost||ready.size<people.length)return;
         started=true;
-        game.start({host:false,userId:uid,channel:ch,roster:e.payload.roster,seed:data.id});
-        ch.send({type:"broadcast",event:"ready",payload:{userId:uid}});
+        if(initTimer){clearInterval(initTimer);initTimer=null;}
+        game.start({host:true,userId:uid,channel:ch,roster:people,seed:data.id});
+        // Repeat GO because a client can miss one packet during subscription.
+        var count=0;
+        var go=setInterval(function(){if(count++>=16){clearInterval(go);return;}broadcast("go",{roomId:data.id});},350);
+        broadcast("go",{roomId:data.id});
+      }
+      ch.on("broadcast",{event:"input"},function(e){if(isHost&&started&&e.payload)game.input(e.payload.userId,e.payload.input);});
+      ch.on("broadcast",{event:"state"},function(e){if(!isHost&&started&&e.payload)game.receive(e.payload);});
+      ch.on("broadcast",{event:"hello"},function(e){
+        if(isHost&&e.payload&&people.some(function(p){return p.user_id===e.payload.userId}))broadcast("init",init);
+      });
+      ch.on("broadcast",{event:"ready"},function(e){
+        if(!isHost||!e.payload||!people.some(function(p){return p.user_id===e.payload.userId}))return;
+        ready.add(e.payload.userId);
+        statusEl.textContent="Forbundet: "+ready.size+"/"+people.length+" spillere";
+        begin();
+      });
+      ch.on("broadcast",{event:"init"},function(e){
+        if(isHost||!e.payload||e.payload.roomId!==data.id)return;
+        if(!Array.isArray(e.payload.roster)||!e.payload.roster.some(function(p){return p.user_id===uid}))return;
+        broadcast("ready",{userId:uid});
+        statusEl.textContent="Forbundet til værten. Venter på alle spillere…";
+      });
+      ch.on("broadcast",{event:"go"},function(e){
+        if(isHost||started||!e.payload||e.payload.roomId!==data.id)return;
+        started=true;
+        if(initTimer){clearInterval(initTimer);initTimer=null;}
+        game.start({host:false,userId:uid,channel:ch,roster:people,seed:data.id});
         message("");
       });
       await new Promise(function(resolve,reject){
-        var t=setTimeout(function(){reject(Error("Realtime-forbindelsen blev ikke oprettet."));},12000);
-        ch.subscribe(function(status){if(status==="SUBSCRIBED"){clearTimeout(t);resolve();}else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(t);reject(Error("Realtime-forbindelsen fejlede."));}});
+        var t=setTimeout(function(){reject(Error("Realtime kunne ikke forbinde. Prøv et nyt rum."));},12000);
+        ch.subscribe(function(status){
+          if(status==="SUBSCRIBED"){clearTimeout(t);resolve();}
+          else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"||status==="CLOSED"){clearTimeout(t);reject(Error("Realtime-forbindelsen fejlede: "+status));}
+        });
       });
+      var tries=0;
       if(isHost){
-        started=true;game.start({host:true,userId:uid,channel:ch,roster:people,seed:data.id});
-        var init={roomId:data.id,roster:people},ready=new Set([uid]);
-        ch.on("broadcast",{event:"ready"},function(e){if(e.payload&&people.some(function(p){return p.user_id===e.payload.userId}))ready.add(e.payload.userId);});
-        if(initTimer)clearInterval(initTimer);
-        var sent=0;
+        statusEl.textContent="Venter på at din ven forbinder (1/"+people.length+")…";
         initTimer=setInterval(function(){
-          if(!started||ready.size>=people.length||sent++>120){clearInterval(initTimer);initTimer=null;return;}
-          ch.send({type:"broadcast",event:"init",payload:init});
-        },450);
-        ch.send({type:"broadcast",event:"init",payload:init});
-      }else message("Venter på kampdata fra værten…");
-    }catch(e){launched=false;if(channel){setup().removeChannel(channel);channel=null;}throw e;}
+          if(started||!launched){clearInterval(initTimer);initTimer=null;return;}
+          if(tries++>80){clearInterval(initTimer);initTimer=null;error(Error("Din ven blev ikke forbundet. Start et nyt rum, og genindlæs begge sider."));return;}
+          broadcast("init",init);
+        },500);
+        broadcast("init",init);
+      }else{
+        statusEl.textContent="Forbinder til værten…";
+        initTimer=setInterval(function(){
+          if(started||!launched){clearInterval(initTimer);initTimer=null;return;}
+          if(tries++>80){clearInterval(initTimer);initTimer=null;error(Error("Kunne ikke forbinde til værten. Start et nyt rum."));return;}
+          broadcast("hello",{userId:uid});
+        },500);
+        broadcast("hello",{userId:uid});
+      }
+    }catch(e){
+      launched=false;
+      if(initTimer){clearInterval(initTimer);initTimer=null;}
+      if(ch){setup().removeChannel(ch);if(channel===ch)channel=null;}
+      throw e;
+    }
   }
   el("arenaRoomCopy").addEventListener("click",function(){
     if(room&&navigator.clipboard)navigator.clipboard.writeText(room).then(function(){message("Rumkoden er kopieret!");}).catch(function(){message("Kopiér koden ovenfor.");});
