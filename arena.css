@@ -172,3 +172,14 @@
 @keyframes arenaVictorySweep{from{transform:translateX(-65%) rotate(25deg)}to{transform:translateX(65%) rotate(25deg)}}
 @media(max-width:700px){#arenaCanvasWrap .arena-victory-banner{top:32%;padding:12px 14px 15px;border-width:3px}#arenaCanvasWrap .arena-victory-words{font-size:clamp(29px,7vw,58px)}#arenaCanvasWrap .arena-victory-caption{margin-top:8px;letter-spacing:.08em}}
 @media(prefers-reduced-motion:reduce){#arenaCanvasWrap .arena-victory-play,#arenaCanvasWrap .arena-victory-flare{animation:none}}
+
+/* Match-start countdown: visible over gameplay on desktop and iPad. */
+#arenaCanvasWrap .arena-countdown[hidden]{display:none!important}
+#arenaCanvasWrap .arena-countdown{position:absolute;inset:0;z-index:18;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(6,18,22,.35),rgba(5,11,15,.66));color:#fff;text-align:center;text-shadow:0 5px 0 #1d2b30,0 12px 22px #000b}
+#arenaCanvasWrap .arena-countdown-top{font:900 clamp(17px,3vw,30px) system-ui;letter-spacing:.25em;color:#ffe4a1}
+#arenaCanvasWrap .arena-countdown-number{font:1000 clamp(105px,22vw,230px)/1 Impact,"Arial Black",system-ui,sans-serif;color:#fff8df;-webkit-text-stroke:3px #15242a;filter:drop-shadow(0 0 24px #ffd06c9c)}
+#arenaCanvasWrap .arena-countdown-bottom{font:900 clamp(15px,3vw,24px) system-ui;letter-spacing:.16em}
+#arenaCanvasWrap .arena-countdown-pulse{animation:arenaCountdownPunch .52s cubic-bezier(.14,1.5,.3,1) both}
+#arenaCanvasWrap .arena-countdown-go .arena-countdown-number{color:#ffe27b;font-size:clamp(85px,17vw,180px)}
+@keyframes arenaCountdownPunch{0%{transform:scale(2.1) rotate(-7deg);opacity:0}60%{opacity:1;transform:scale(.92) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
+@media(prefers-reduced-motion:reduce){#arenaCanvasWrap .arena-countdown-pulse{animation:none}}
