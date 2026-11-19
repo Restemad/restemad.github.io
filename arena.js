@@ -4,7 +4,8 @@
   var root = document.getElementById("arenaGame");
   if (!root) return;
 
-  var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
+  var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d",{alpha:false});
+  var tabletMode=window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var buildCooldownUntil=0,editTarget=null,editCells=[true,true,true,true],lastBuildAt=0,buildDefaults={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"},buildBinds={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"};
@@ -879,7 +880,7 @@
       ctx.restore();
     }
     drawAimGuide();
-    particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
+    particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;if(!tabletMode){ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;}ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
     drawMinimap();drawStormStatus();drawSuperHud();
   }
   // Screen-space storm indicator remains readable even if the ring is offscreen.
@@ -1035,7 +1036,7 @@
     }
     // The guest draws at 40 FPS instead of redrawing the whole large map at 60+ FPS.
     // Network input and snapshots continue independently of the rendering limit.
-    if(!net||net.host||now-netLastDraw>=25){netLastDraw=now;draw();}
+    if(now-netLastDraw>=(tabletMode?25:0)||!net&&netLastDraw===0){netLastDraw=now;draw();}
     if(running)raf=requestAnimationFrame(loop);
   }
   function sendNetInput(){
@@ -1127,8 +1128,9 @@
     netInputs[id]={dx:clamp(dx,-1,1),dy:clamp(dy,-1,1),angle:angle,fire:!!cmd.fire,super:!!cmd.super,dash:!!cmd.dash};
   },map:function(){return obstacles;}};
   function setCanvasSize(){
-    var rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,isTouch()?1.25:2);
-    canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));
+    var rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,tabletMode?1:2);
+    var nextWidth=Math.max(1,Math.round(rect.width*dpr)),nextHeight=Math.max(1,Math.round(rect.height*dpr));
+    if(canvas.width!==nextWidth||canvas.height!==nextHeight){canvas.width=nextWidth;canvas.height=nextHeight;}
     ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
     draw();
   }
@@ -1228,6 +1230,15 @@
   canvas.addEventListener("pointerdown",function(e){if(e.pointerType==="mouse"){pointer.down=true;canvas.setPointerCapture(e.pointerId);}});
   window.addEventListener("pointerup",function(){pointer.down=false;});
   window.addEventListener("blur",function(){pointer.down=false;touchDash=false;superPressed=false;touchAim.active=false;touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;touchAutoBurstUntil=0;touchLastTap=0;touchMove={x:0,y:0};keys=Object.create(null);});
-  window.addEventListener("resize",setCanvasSize);
+  // Safari can resize repeatedly while its toolbars move; avoid needless canvas reallocations.
+  var resizeQueued=false;
+  window.addEventListener("resize",function(){if(resizeQueued)return;resizeQueued=true;requestAnimationFrame(function(){resizeQueued=false;setCanvasSize();});});
+  // Avoid catching up with a stale frame when returning from another iPad app.
+  document.addEventListener("visibilitychange",function(){
+    last=performance.now();netLastDraw=0;
+    if(!document.hidden&&running&&!countdownOverlay.hidden){
+      countdownStartAt=performance.now()-(3-countdownLeft)*1000;
+    }
+  });
   buildSelect();renderStats();setCanvasSize();
 })();
