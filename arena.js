@@ -5,7 +5,7 @@
   if (!root) return;
 
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
-  var W = 960, H = 600, ZOOM = .5, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
+  var W = 960, H = 600, ZOOM = .76, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], obstacles = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, dashHeld = false;
@@ -13,10 +13,10 @@
   var stats = {wins:0, eliminations:0, trophies:0, games:0};
   try { stats = Object.assign(stats, JSON.parse(localStorage.getItem(statsKey)||"{}")); } catch(e) {}
   var foods = [
-    {name:"Bananpandekage", color:"#E8B84F", hp:125, speed:128, damage:13, rate:.25, spread:0, count:1, range:540, desc:"Hurtige, præcise pandekageskud – som en hurtig maskingeværskytte."},
-    {name:"Grøntsagswrap", color:"#5BA66A", hp:175, speed:112, damage:25, rate:.72, spread:.08, count:1, range:440, desc:"Kraftige grøntsagsskud med kortere rækkevidde og højere skade."},
-    {name:"Pastasalat", color:"#E58A48", hp:145, speed:118, damage:10, rate:.82, spread:.42, count:5, range:390, desc:"Kaster en vifte af fem pastastykker – bedst på tæt hold."},
-    {name:"Hjemmelavede croutoner", color:"#B98A55", hp:145, speed:120, damage:19, rate:.58, spread:.10, count:2, range:470, desc:"Skyder to sprøde croutoner ad gangen."}
+    {name:"Bananpandekage", color:"#E8B84F", hp:125, speed:128, damage:13, rate:.25, spread:0, count:1, range:410, desc:"Hurtige, præcise pandekageskud – som en hurtig maskingeværskytte."},
+    {name:"Grøntsagswrap", color:"#5BA66A", hp:175, speed:112, damage:25, rate:.72, spread:.08, count:1, range:340, desc:"Kraftige grøntsagsskud med kortere rækkevidde og højere skade."},
+    {name:"Pastasalat", color:"#E58A48", hp:145, speed:118, damage:10, rate:.82, spread:.42, count:5, range:300, desc:"Kaster en vifte af fem pastastykker – bedst på tæt hold."},
+    {name:"Hjemmelavede croutoner", color:"#B98A55", hp:145, speed:120, damage:19, rate:.58, spread:.10, count:2, range:360, desc:"Skyder to sprøde croutoner ad gangen."}
   ];
   function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
   function rand(a,b){return a+Math.random()*(b-a);}
@@ -118,12 +118,12 @@
       if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=16*dt;if(p.hp<=0){p.hp=0;p.alive=false;if(p===me){finish(false);}else if(me&&me.alive){me.kills++;}}}
       if(p.human){
-        p.walking=Math.hypot(dx,dy)>.08;
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
         if(touchDash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
         var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
         var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
         if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
+        p.walking=Math.hypot(dx,dy)>.08;
         if(p.dash>0){if(Math.hypot(dx,dy)<.1){dx=Math.cos(p.angle);dy=Math.sin(p.angle);}movePlayer(p,dx,dy,dt,2.9);if(Math.random()<.8)particles.push({x:p.x,y:p.y,vx:rand(-35,35),vy:rand(-35,35),life:.28,color:"#fff0a8"});}else movePlayer(p,dx,dy,dt);
         var target=isTouch()?touchAim:pointer;
         if(target.active){p.angle=Math.atan2(target.y/ZOOM+camera.y-p.y,target.x/ZOOM+camera.x-p.x);}
@@ -252,7 +252,7 @@
     ctx.clearRect(0,0,W,H);if(me){camera.x=clamp(me.x-W/(2*ZOOM),0,WORLD_W-W/ZOOM);camera.y=clamp(me.y-H/(2*ZOOM),0,WORLD_H-H/ZOOM);}ctx.save();ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
     var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+W,camera.y+H);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x,camera.y,W,H);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+W+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+H+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();}}
-    ctx.save();ctx.strokeStyle="rgba(220,65,55,.9)";ctx.lineWidth=10;ctx.setLineDash([20,14]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="rgba(210,65,55,.055)";ctx.beginPath();ctx.rect(0,0,WORLD_W,WORLD_H);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2,true);ctx.fill("evenodd");ctx.restore();
+    ctx.save();ctx.strokeStyle="rgba(220,65,55,.9)";ctx.lineWidth=10;ctx.setLineDash([20,14]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
     obstacles.forEach(function(o){
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
       if(o.kind==="wall"){
