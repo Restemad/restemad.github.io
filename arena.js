@@ -363,7 +363,7 @@
             }
             p.angle=best===null?rawAngle:rawAngle+Math.atan2(Math.sin(best-rawAngle),Math.cos(best-rawAngle))*.65;
           }
-          if(touchReleaseShot||performance.now()<touchAutoBurstUntil){p.angle=touchAutoAim||performance.now()<touchAutoBurstUntil?autoAimAngle(p):touchShotAngle;shoot(p,p.angle);}
+          if(touchReleaseShot){p.angle=touchAutoAim?autoAimAngle(p):touchShotAngle;shoot(p,p.angle);}
           touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;
         }else{
           p.angle=Math.atan2(pointer.y/ZOOM+camera.y-p.y,pointer.x/ZOOM+camera.x-p.x);
@@ -854,8 +854,8 @@
     var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
     var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
     if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
-    var angle=isTouch()?(performance.now()<touchAutoBurstUntil?autoAimAngle(me):touchReleaseShot?(touchAutoAim?autoAimAngle(me):touchShotAngle):touchAim.active?Math.atan2(touchAim.y,touchAim.x):me.angle):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
-    net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?(touchReleaseShot||performance.now()<touchAutoBurstUntil):(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
+    var angle=isTouch()?(touchReleaseShot?(touchAutoAim?autoAimAngle(me):touchShotAngle):touchAim.active?Math.atan2(touchAim.y,touchAim.x):me.angle):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
+    net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?touchReleaseShot:(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
     touchDash=false;
     superPressed=false;touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;
   }
@@ -943,7 +943,7 @@
     ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
     draw();
   }
-  var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false,touchShotAngle=null,touchAutoBurstUntil=0,touchLastTap=0;
+  var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false,touchShotAngle=null;
   function autoAimAngle(p){var best=null,near=Infinity;for(var i=0;i<players.length;i++){var enemy=players[i];if(enemy===p||!enemy.alive||enemy.team===p.team||!canSee(p,enemy)||!clearShot(p,enemy))continue;var d=dist(p,enemy);if(d<p.range+25&&d<near){near=d;best=enemy;}}return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;}
   function joystick(el,kind){
     var active=false,id=null,center=null,dragged=false;
@@ -968,8 +968,6 @@
       if(kind==="move"){touchMove={x:0,y:0};return;}
       if(e.type==="pointerup"){
         touchAutoAim=!dragged;touchShotAngle=dragged?Math.atan2(touchAim.y,touchAim.x):null;touchReleaseShot=true;
-        if(!dragged){var now=performance.now();if(now-touchLastTap<340){touchAutoBurstUntil=now+850;touchLastTap=0;}else touchLastTap=now;}
-        else{touchLastTap=0;touchAutoBurstUntil=0;}
       }
       touchAim.active=false;
     }
@@ -1011,7 +1009,7 @@
   canvas.addEventListener("pointermove",function(e){var r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width*W;pointer.y=(e.clientY-r.top)/r.height*H;pointer.active=true;});
   canvas.addEventListener("pointerdown",function(e){if(e.pointerType==="mouse"){pointer.down=true;canvas.setPointerCapture(e.pointerId);}});
   window.addEventListener("pointerup",function(){pointer.down=false;});
-  window.addEventListener("blur",function(){pointer.down=false;touchDash=false;superPressed=false;touchAim.active=false;touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;touchAutoBurstUntil=0;touchLastTap=0;touchMove={x:0,y:0};keys=Object.create(null);});
+  window.addEventListener("blur",function(){pointer.down=false;touchDash=false;superPressed=false;touchAim.active=false;touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;touchMove={x:0,y:0};keys=Object.create(null);});
   window.addEventListener("resize",setCanvasSize);
   buildSelect();renderStats();setCanvasSize();
 })();
