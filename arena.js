@@ -621,7 +621,24 @@
     players.forEach(function(p){if(!p.alive||p.x<camera.x-80||p.x>camera.x+viewWorldW+80||p.y<camera.y-80||p.y>camera.y+viewWorldH+80||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);
       if(p.shield>0){ctx.save();var shieldPulse=1+Math.sin(elapsed*9)*.045;ctx.globalAlpha=.74;ctx.strokeStyle="#8cf0ff";ctx.lineWidth=6;ctx.shadowColor="#8cf0ff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(p.x,p.y,42*shieldPulse,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.13;ctx.fillStyle="#75eaff";ctx.fill();ctx.restore();}
       if(p.superFlash>0){ctx.save();ctx.globalAlpha=clamp(p.superFlash,0,1);ctx.strokeStyle="#ffe37a";ctx.shadowColor="#ffe37a";ctx.shadowBlur=15;ctx.lineWidth=7;ctx.beginPath();ctx.arc(p.x,p.y,45+(1.05-p.superFlash)*55,0,Math.PI*2);ctx.stroke();ctx.restore();}
-      ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p===me?"DIG":net?String(p.name||"MODSTANDER").slice(0,18):foods[p.fighter].name,p.x,p.y-48);
+      // Keep every player's health visible above their character, including your own.
+      var own=p===me,barW=own?76:58,barH=own?11:8,barY=p.y-(own?53:45);
+      var hpFraction=clamp((Number(p.hp)||0)/Math.max(1,Number(p.maxHp)||1),0,1);
+      ctx.save();
+      ctx.globalAlpha=1;
+      ctx.fillStyle="rgba(17,35,26,.94)";ctx.beginPath();ctx.roundRect(p.x-barW/2-3,barY-3,barW+6,barH+6,6);ctx.fill();
+      ctx.fillStyle="#354b3d";ctx.beginPath();ctx.roundRect(p.x-barW/2,barY,barW,barH,4);ctx.fill();
+      ctx.fillStyle=hpFraction>.55?"#6be67d":hpFraction>.25?"#ffce55":"#ff6262";
+      if(hpFraction>0){ctx.beginPath();ctx.roundRect(p.x-barW/2,barY,barW*hpFraction,barH,4);ctx.fill();}
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.font=own?"bold 12px system-ui":"bold 11px system-ui";
+      ctx.lineWidth=3;ctx.strokeStyle="rgba(10,25,17,.9)";ctx.fillStyle="#fff";
+      var hpLabel=Math.ceil(Math.max(0,p.hp))+" / "+Math.ceil(p.maxHp);
+      ctx.strokeText(hpLabel,p.x,barY-12);ctx.fillText(hpLabel,p.x,barY-12);
+      ctx.font="bold 12px system-ui";ctx.textBaseline="alphabetic";
+      var nameLabel=own?"DIG":net?String(p.name||"MODSTANDER").slice(0,18):foods[p.fighter].name;
+      ctx.strokeText(nameLabel,p.x,barY-28);ctx.fillText(nameLabel,p.x,barY-28);
+      ctx.restore();
       if(net){ctx.save();ctx.strokeStyle=p===me?"#47d7ff":"#ff6a78";ctx.lineWidth=p===me?5:4;ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=12;ctx.beginPath();ctx.arc(p.x,p.y,33,0,Math.PI*2);ctx.stroke();ctx.restore();}
       ctx.restore();});
     // Brawl Stars-style foreground foliage: the bush softens above your own fighter.
