@@ -68,7 +68,7 @@
     root.querySelector("#arenaResult").hidden=true;
     root.querySelector("#arenaTouch").hidden=!isTouch();
     root.querySelector("#arenaModeLabel").textContent=which==="showdown"?"SOLO SHOWDOWN":"TRÆNING";
-    root.querySelector("#arenaHint").textContent=isTouch()?"Venstre joystick: bevæg · Højre joystick: sigt":"WASD: bevæg · Mus: sigt · Venstreklik: skyd";
+    root.querySelector("#arenaHint").textContent=isTouch()?"Venstre joystick: bevæg · Højre joystick: sigt · SKUD: affyr · Følg skudlinjerne":"WASD: bevæg · Mus: sigt · Venstreklik: skyd · Følg skudlinjerne";
     running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
   }
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
