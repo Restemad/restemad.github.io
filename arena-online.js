@@ -126,6 +126,12 @@
         var go=setInterval(function(){if(count++>=16){clearInterval(go);return;}broadcast("go",{roomId:data.id});},350);
         broadcast("go",{roomId:data.id});
       }
+      // Allow guests to request a fresh authoritative snapshot after a packet gap.
+      ch.on("broadcast",{event:"resync"},function(e){
+        if(isHost&&started&&e.payload&&people.some(function(p){return p.user_id===e.payload.userId;})){
+          if(typeof game.sync==="function")game.sync();
+        }
+      });
       ch.on("broadcast",{event:"input"},function(e){if(isHost&&started&&e.payload)game.input(e.payload.userId,e.payload.input);});
       ch.on("broadcast",{event:"state"},function(e){if(!isHost&&started&&e.payload)game.receive(e.payload);});
       ch.on("broadcast",{event:"hello"},function(e){
@@ -148,6 +154,17 @@
         started=true;
         if(initTimer){clearInterval(initTimer);initTimer=null;}
         game.start({host:false,userId:uid,channel:ch,roster:people,seed:data.id});
+        // Periodic watchdog: ask host to resend after 1.5s without state.
+        // Avoid unbounded retries and queued traffic during disconnections.
+        var lastResync=0;
+        var watchdog=setInterval(function(){
+          if(!launched||channel!==ch||!started){clearInterval(watchdog);return;}
+          var age=typeof game.snapshotAge==="function"?game.snapshotAge():0;
+          if(age>1500&&Date.now()-lastResync>2500&&ch.state==="joined"){
+            lastResync=Date.now();
+            broadcast("resync",{userId:uid});
+          }
+        },750);
         message("");
       });
       await new Promise(function(resolve,reject){
