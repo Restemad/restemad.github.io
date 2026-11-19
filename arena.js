@@ -8,6 +8,7 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var minimapTerrain=null;
+  var terrainTileCache=new Map();
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netSequence=0, netLastDraw=0;
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
@@ -586,9 +587,18 @@
     ctx.strokeStyle="rgba(255,238,186,.22)";ctx.lineWidth=4;ctx.setLineDash([18,30]);ctx.stroke();ctx.setLineDash([]);
     var tile=155,ix0=Math.floor(camera.x/tile),ix1=Math.ceil((camera.x+viewWorldW)/tile),iy0=Math.floor(camera.y/tile),iy1=Math.ceil((camera.y+viewWorldH)/tile);
     for(var ix=ix0;ix<=ix1;ix++){for(var iy=iy0;iy<=iy1;iy++){
-      var seed=Math.abs((ix*73856093)^(iy*19349663)),px=ix*tile+24+(seed%95),py=iy*tile+18+((seed>>>8)%100);
-      if(seed%5===0){ctx.fillStyle=seed%2?"#f4e69e":"#f7f4e5";for(var petal=0;petal<5;petal++){var ang=petal*Math.PI*2/5;ctx.beginPath();ctx.arc(px+Math.cos(ang)*4,py+Math.sin(ang)*4,2.8,0,Math.PI*2);ctx.fill();}ctx.fillStyle="#edbb55";ctx.beginPath();ctx.arc(px,py,2.5,0,Math.PI*2);ctx.fill();}
-      else if(seed%7===0){ctx.strokeStyle="rgba(60,116,52,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px-4,py+5);ctx.lineTo(px,py-4);ctx.lineTo(px+4,py+5);ctx.stroke();}
+      var key=ix+","+iy,decor=terrainTileCache.get(key);
+      if(!decor){
+        decor=document.createElement("canvas");decor.width=tile;decor.height=tile;
+        var dctx=decor.getContext("2d");
+        var seed=Math.abs((ix*73856093)^(iy*19349663)),px=24+(seed%95),py=18+((seed>>>8)%100);
+        if(seed%5===0){dctx.fillStyle=seed%2?"#f4e69e":"#f7f4e5";for(var petal=0;petal<5;petal++){var ang=petal*Math.PI*2/5;dctx.beginPath();dctx.arc(px+Math.cos(ang)*4,py+Math.sin(ang)*4,2.8,0,Math.PI*2);dctx.fill();}dctx.fillStyle="#edbb55";dctx.beginPath();dctx.arc(px,py,2.5,0,Math.PI*2);dctx.fill();}
+        else if(seed%7===0){dctx.strokeStyle="rgba(60,116,52,.35)";dctx.lineWidth=2;dctx.beginPath();dctx.moveTo(px-4,py+5);dctx.lineTo(px,py-4);dctx.lineTo(px+4,py+5);dctx.stroke();}
+        // Bound memory even when the player travels across the whole world.
+        if(terrainTileCache.size>=180)terrainTileCache.delete(terrainTileCache.keys().next().value);
+        terrainTileCache.set(key,decor);
+      }
+      ctx.drawImage(decor,ix*tile,iy*tile);
     }}
     ctx.restore();
     // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
