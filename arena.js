@@ -65,19 +65,19 @@
       obstacles.push({x:c[0],y:c[1],w:i%2?88:115,h:i%2?66:80,bush:false,kind:i%2?"wall":"rock"});
     });
   }
-  function inBush(p){
-    return obstacles.some(function(o){
-      if(o.kind!=="bush")return false;
-      var rx=o.w*.5-12,ry=o.h*.5-12;
-      return Math.pow((p.x-o.x-o.w*.5)/rx,2)+Math.pow((p.y-o.y-o.h*.5)/ry,2)<1;
-    });
+  // All actual bushes are hiding places; the exact same bush determines shared vision.
+  function bushAt(p){
+    for(var i=0;i<obstacles.length;i++){
+      var o=obstacles[i];if(o.kind!=="bush")continue;
+      var dx=(p.x-o.x-o.w*.5)/(o.w*.5-12),dy=(p.y-o.y-o.h*.5)/(o.h*.5-12);
+      if(dx*dx+dy*dy<1)return o;
+    }
+    return null;
   }
+  function inBush(p){return !!bushAt(p);}
   function canSee(observer,target){
-    return !inBush(target)||inBush(observer)&&obstacles.some(function(o){
-      return o.kind==="bush"&&
-        Math.pow((observer.x-o.x-o.w*.5)/(o.w*.5-12),2)+Math.pow((observer.y-o.y-o.h*.5)/(o.h*.5-12),2)<1&&
-        Math.pow((target.x-o.x-o.w*.5)/(o.w*.5-12),2)+Math.pow((target.y-o.y-o.h*.5)/(o.h*.5-12),2)<1;
-    })||Math.hypot(observer.x-target.x,observer.y-target.y)<75;
+    var cover=bushAt(target);
+    return !cover||bushAt(observer)===cover||Math.hypot(observer.x-target.x,observer.y-target.y)<65||(target.revealed||0)>0;
   }
   function obstacleHit(o,x,y,pad){
     if(o.kind==="bush")return false;
@@ -125,7 +125,7 @@
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
   function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
-    p.cool=p.rate;p.recoil=.16;
+    p.cool=p.rate;p.recoil=.16;p.revealed=1.1;
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
       bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
@@ -165,13 +165,13 @@
   }
   // Each round has a pause and a smooth pull. The final rounds MOVE instead of closing to zero.
   var stormRounds=[
-    {wait:11,move:19,r:1350,shift:170},
-    {wait:9,move:18,r:970,shift:220},
-    {wait:8,move:17,r:690,shift:220},
-    {wait:7,move:16,r:470,shift:180},
-    {wait:7,move:15,r:430,shift:270},
-    {wait:6,move:14,r:430,shift:290},
-    {wait:6,move:14,r:430,shift:300}
+    {wait:8,move:15,r:1350,shift:170},
+    {wait:7,move:14,r:970,shift:220},
+    {wait:6,move:13,r:690,shift:220},
+    {wait:6,move:12,r:470,shift:180},
+    {wait:5,move:12,r:430,shift:270},
+    {wait:5,move:11,r:430,shift:290},
+    {wait:5,move:11,r:430,shift:300}
   ];
   function nextStormTarget(round){
     var angle=rand(0,Math.PI*2),d=round.shift;
@@ -195,7 +195,7 @@
     elapsed+=dt;
     updateStorm(dt);
     players.forEach(function(p){
-      if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
+      if(!p.alive)return;p.revealed=Math.max(0,(p.revealed||0)-dt);p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=19*dt;if(p.hp<=0){p.hp=0;p.alive=false;addKillFeed(null,p);if(p===me){finish(false);}}}
       if(p.human){
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
@@ -442,7 +442,17 @@
       }
     });
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
-    players.forEach(function(p){if(!p.alive||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.72:.82;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);ctx.restore();});
+    players.forEach(function(p){if(!p.alive||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);ctx.restore();});
+    // Brawl Stars-style foreground foliage: the bush softens above your own fighter.
+    // Other players outside cannot see the hidden hero at all (filtered above).
+    if(me&&me.alive&&inBush(me)){
+      var ownBush=bushAt(me);
+      ctx.save();ctx.globalAlpha=.25;ctx.fillStyle="#4baf57";
+      ctx.beginPath();ctx.ellipse(ownBush.x+ownBush.w*.5,ownBush.y+ownBush.h*.5,ownBush.w*.47,ownBush.h*.44,0,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=.42;ctx.strokeStyle="#b6f39c";ctx.lineWidth=4;
+      ctx.beginPath();ctx.ellipse(ownBush.x+ownBush.w*.5,ownBush.y+ownBush.h*.5,ownBush.w*.46,ownBush.h*.43,0,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
     drawAimGuide();
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
     drawMinimap();drawStormStatus();
