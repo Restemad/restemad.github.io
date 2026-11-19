@@ -112,14 +112,17 @@
   }
   function update(dt){
     elapsed+=dt;
+    if(elapsed>8&&zone.r>260)zone.r=Math.max(260,zone.r-18*dt);
     players.forEach(function(p){
       if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);
-      if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=10*dt;if(p.hp<=0){p.hp=0;p.alive=false;if(p===me){finish(false);}else if(me&&me.alive){me.kills++;}}}
+      if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=16*dt;if(p.hp<=0){p.hp=0;p.alive=false;if(p===me){finish(false);}else if(me&&me.alive){me.kills++;}}}
       if(p.human){
+        p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
+        if((keys.shift||touchDash)&&p.dashCooldown<=0){p.dash=.22;p.dashCooldown=2.1;}
         var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
         var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
         if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
-        movePlayer(p,dx,dy,dt);
+        if(p.dash>0){if(Math.hypot(dx,dy)<.1){dx=Math.cos(p.angle);dy=Math.sin(p.angle);}movePlayer(p,dx*2.65,dy*2.65,dt);}else movePlayer(p,dx,dy,dt);
         var target=isTouch()?touchAim:pointer;
         if(target.active){p.angle=Math.atan2(target.y+camera.y-p.y,target.x+camera.x-p.x);}
         else p.angle=Math.atan2(pointer.y+camera.y-p.y,pointer.x+camera.x-p.x);
@@ -130,13 +133,14 @@
         var t=p.target&&p.target.alive?p.target:nearest(p,true)||nearest(p,false);
         if(t){
           var a=Math.atan2(t.y-p.y,t.x-p.x),d=dist(p,t),visible=clearShot(p,t);p.angle=a;
-          var strafe=Math.sin(elapsed*1.35+p.x*.018)*.42;
+          var strafe=Math.sin(elapsed*1.8+p.x*.018)*.62;
           var mx=0,my=0;
+          bullets.forEach(function(b){if(b.owner===p||!b.owner.alive)return;var bx=p.x-b.x,by=p.y-b.y,bd=Math.hypot(bx,by);var closing=b.vx*bx+b.vy*by<0;if(bd<125&&closing){mx+=bx/Math.max(1,bd)*1.25;my+=by/Math.max(1,bd)*1.25;}});
           if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
           if(!visible){var side=(Math.sin(elapsed+p.y*.01)>0?1:-1);mx+=-Math.sin(a)*side*.85;my+=Math.cos(a)*side*.85;}
           else {mx-=Math.sin(a)*strafe;my+=Math.cos(a)*strafe;}
           movePlayer(p,mx,my,dt);
-          if(visible&&d<p.range*.82&&Math.random()<.38)shoot(p,a+rand(-.075,.075),t);
+          if(visible&&d<p.range*.9&&Math.random()<.58)shoot(p,a+rand(-.045,.045),t);
         }
       }
     });
