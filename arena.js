@@ -810,16 +810,26 @@
     if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
     audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};
     netInputs=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=performance.now();
-    players=[];bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
-    makeMap();zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null;
+    players=[];me=null;bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    // All clients generate the exact same map from the room ID.
+    var seed=0,seedText=String(cfg.seed||"restemad");
+    for(var si=0;si<seedText.length;si++)seed=(Math.imul(seed,31)+seedText.charCodeAt(si))>>>0;
+    var originalRandom=Math.random;
+    Math.random=function(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+    try{makeMap();}finally{Math.random=originalRandom;}
+    zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null;
     cfg.roster.forEach(function(r,i){
-      var f=Number(r.fighter),p=spawn(f,true),a=i*Math.PI*2/cfg.roster.length,rad=180+(i%3)*65;
+      var f=Number(r.fighter);
+      if(!Number.isInteger(f)||f<0||f>=foods.length)f=0;
+      var p=spawn(f,true),a=i*Math.PI*2/cfg.roster.length,rad=180+(i%3)*65;
       p.x=WORLD_W/2+Math.cos(a)*rad;p.y=WORLD_H/2+Math.sin(a)*rad;
-      p.netId=r.user_id;p.name=r.nickname;p.human=true;p.bot=false;p.hp=foods[f].hp;p.maxHp=foods[f].hp;p.ammo=ammoCapacity(p);p.superCharge=0;p.dash=0;p.dashCooldown=0;
+      p.netId=r.user_id;p.name=r.user_id===cfg.userId?"Dig":String(r.nickname||"Spiller");p.human=true;p.bot=false;p.hp=foods[f].hp;p.maxHp=foods[f].hp;p.ammo=ammoCapacity(p);p.superCharge=0;p.dash=0;p.dashCooldown=0;
       players.push(p);if(r.user_id===cfg.userId)me=p;
     });
     if(!me){net=null;return;}
-    if(!cfg.host&&Array.isArray(cfg.obstacles))obstacles=cfg.obstacles;
+    // Guard against malformed duplicate roster entries.
+    if(new Set(players.map(function(p){return p.netId;})).size!==players.length){net=null;return;}
+    // Map is deterministic; do not transmit large obstacle arrays over Realtime.
     root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
     root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
     root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaRestart").hidden=true;
@@ -831,7 +841,7 @@
     running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
   }
   window.RESTEMAD_ONLINE_GAME={start:startOnline,receive:receiveNetSnapshot,input:function(id,cmd){
-    if(!net||!net.host||!players.some(function(p){return p.netId===id})||!cmd)return;
+    if(!net||!net.host||id===net.userId||!players.some(function(p){return p.netId===id})||!cmd)return;
     var dx=Number(cmd.dx),dy=Number(cmd.dy),angle=Number(cmd.angle);
     if(!Number.isFinite(dx)||!Number.isFinite(dy)||!Number.isFinite(angle))return;
     netInputs[id]={dx:clamp(dx,-1,1),dy:clamp(dy,-1,1),angle:angle,fire:!!cmd.fire,super:!!cmd.super,dash:!!cmd.dash};

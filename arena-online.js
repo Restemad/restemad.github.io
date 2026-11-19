@@ -6,7 +6,7 @@
   var root=document.getElementById("arenaGame");
   if(!root)return;
   var el=function(id){return root.querySelector("#"+id);};
-  var client=null, room=null, host=false, timer=null, busy=false, channel=null, launched=false;
+  var client=null, room=null, host=false, timer=null, busy=false, channel=null, launched=false, initTimer=null, launchPromise=null;
   function message(t){el("arenaOnlineMessage").textContent=t;}
   function error(e){message("⚠️ "+(e&&e.message?e.message:"Der opstod en fejl. Prøv igen."));}
   function setup(){
@@ -64,7 +64,7 @@
     el("arenaRoomStatus").textContent=waiting?(people.length<2?"Venter på mindst 2 spillere…":host?"I er klar! Værten kan starte.":"Venter på, at værten starter."):"Kampen er startet! Forbinder til onlinekampen…";
   }
   function showRoom(code){
-    if(channel){setup().removeChannel(channel);channel=null;}launched=false;
+    if(initTimer){clearInterval(initTimer);initTimer=null;}if(channel){setup().removeChannel(channel);channel=null;}launched=false;
     room=code;el("arenaRoomCurrentCode").textContent=code;el("arenaRoomLobby").hidden=false;
     el("arenaRoomStart").hidden=true;
     if(timer)clearInterval(timer);
@@ -107,14 +107,18 @@
     if(launched)return;launched=true;
     try{
       var uid=await login(),isHost=uid===data.host_id,game=window.RESTEMAD_ONLINE_GAME;
+      if(new Set(people.map(function(p){return p.user_id;})).size!==people.length)throw Error("Spillerlisten indeholder dubletter.");
       if(!game)throw Error("Online-spilmotoren blev ikke indlæst.");
       var ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false}}});
       channel=ch;var started=false;
       ch.on("broadcast",{event:"input"},function(e){if(isHost&&e.payload)game.input(e.payload.userId,e.payload.input);});
       ch.on("broadcast",{event:"state"},function(e){if(!isHost&&started)game.receive(e.payload);});
       ch.on("broadcast",{event:"init"},function(e){
-        if(isHost||started||!e.payload)return;started=true;
-        game.start({host:false,userId:uid,channel:ch,roster:e.payload.roster,obstacles:e.payload.obstacles});
+        if(isHost||started||!e.payload||e.payload.roomId!==data.id)return;
+        if(!Array.isArray(e.payload.roster)||!e.payload.roster.some(function(p){return p.user_id===uid}))return;
+        started=true;
+        game.start({host:false,userId:uid,channel:ch,roster:e.payload.roster,seed:data.id});
+        ch.send({type:"broadcast",event:"ready",payload:{userId:uid}});
         message("");
       });
       await new Promise(function(resolve,reject){
@@ -122,12 +126,18 @@
         ch.subscribe(function(status){if(status==="SUBSCRIBED"){clearTimeout(t);resolve();}else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(t);reject(Error("Realtime-forbindelsen fejlede."));}});
       });
       if(isHost){
-        started=true;game.start({host:true,userId:uid,channel:ch,roster:people});
-        var init={roster:people,obstacles:game.map()},sent=0;
-        var intro=setInterval(function(){if(!started||sent++>25){clearInterval(intro);return;}ch.send({type:"broadcast",event:"init",payload:init});},500);
+        started=true;game.start({host:true,userId:uid,channel:ch,roster:people,seed:data.id});
+        var init={roomId:data.id,roster:people},ready=new Set([uid]);
+        ch.on("broadcast",{event:"ready"},function(e){if(e.payload&&people.some(function(p){return p.user_id===e.payload.userId}))ready.add(e.payload.userId);});
+        if(initTimer)clearInterval(initTimer);
+        var sent=0;
+        initTimer=setInterval(function(){
+          if(!started||ready.size>=people.length||sent++>120){clearInterval(initTimer);initTimer=null;return;}
+          ch.send({type:"broadcast",event:"init",payload:init});
+        },450);
         ch.send({type:"broadcast",event:"init",payload:init});
       }else message("Venter på kampdata fra værten…");
-    }catch(e){launched=false;throw e;}
+    }catch(e){launched=false;if(channel){setup().removeChannel(channel);channel=null;}throw e;}
   }
   el("arenaRoomCopy").addEventListener("click",function(){
     if(room&&navigator.clipboard)navigator.clipboard.writeText(room).then(function(){message("Rumkoden er kopieret!");}).catch(function(){message("Kopiér koden ovenfor.");});
