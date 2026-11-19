@@ -163,7 +163,7 @@
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
-    audioReady();countdownLeft=3.15;countdownStep=0;countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.65;countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
@@ -709,7 +709,7 @@
     });
     ctx.restore();
   }
-  var countdownLeft=0,countdownStep=0;
+  var countdownLeft=0,countdownStep=0,countdownGoHold=0;
   var countdownOverlay=document.createElement("div");
   countdownOverlay.className="arena-countdown";countdownOverlay.hidden=true;
   countdownOverlay.innerHTML='<div class="arena-countdown-top">GØR DIG KLAR</div><div class="arena-countdown-number">3</div><div class="arena-countdown-bottom">SOLO SHOWDOWN</div>';
@@ -732,8 +732,8 @@
       countdownLeft=Math.max(0,countdownLeft-dt);countdownTick();
       if(countdownLeft===0){countdownOverlay.classList.add("arena-countdown-go");}
     }else if(!countdownOverlay.hidden&&countdownLeft===0){
-      countdownOverlay.hidden=true;countdownOverlay.classList.remove("arena-countdown-go");
-      update(dt);
+      countdownGoHold-=dt;
+      if(countdownGoHold<=0){countdownOverlay.hidden=true;countdownOverlay.classList.remove("arena-countdown-go");update(dt);}
     }else update(dt);
     draw();if(running)raf=requestAnimationFrame(loop);
   }
