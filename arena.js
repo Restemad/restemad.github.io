@@ -278,8 +278,8 @@
       // Prevent duplicates on the same edge/cell without blocking adjacent builds.
       if(obstacles.some(function(v){return v.built&&v.buildType===type&&v.x===x&&v.y===y&&v.w===w&&v.h===h;}))return;
     }else{
-      // Aim-aligned walls: up/down = tall, left/right = wide.
-      var dims=vertical?[110,22]:[22,110];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
+      // Wall is perpendicular to aim: looking up/down makes a wide wall; sideways makes a tall wall.
+      var dims=vertical?[22,110]:[110,22];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
     }
     var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
     if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
@@ -295,7 +295,7 @@
     bot.nextWallAt=now+rand(4200,8500);
     var a=Math.atan2(enemy.y-bot.y,enemy.x-bot.x);
     var x=bot.x+Math.cos(a)*75,y=bot.y+Math.sin(a)*75;
-    var tall=Math.abs(Math.cos(a))>.707,w=tall?22:110,h=tall?110:22;
+    var tall=Math.abs(Math.cos(a))>.707,w=tall?110:22,h=tall?22:110;
     var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,expires:now+11000,edited:false};
     if(o.x<25||o.y<25||o.x+o.w>WORLD_W-25||o.y+o.h>WORLD_H-25)return false;
     if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+o.w+6&&v.x+v.w>o.x-6&&v.y<o.y+o.h+6&&v.y+v.h>o.y-6}))return false;
