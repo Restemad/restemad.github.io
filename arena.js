@@ -47,8 +47,37 @@
   }
   function makeMap(){
     obstacles=[];
-    for(var i=0;i<140;i++){var x=rand(100,WORLD_W-130),y=rand(100,WORLD_H-120),t=Math.random();obstacles.push({x:x,y:y,w:t<.3?rand(110,175):rand(48,105),h:t<.3?rand(90,145):rand(42,100),bush:t>.72,kind:t<.3?"wall":t<.72?"rock":"bush"});}
-    [[650,500],[1800,380],[3000,650],[950,1650],[2350,1750],[3300,1500]].forEach(function(p){for(var j=0;j<7;j++)obstacles.push({x:p[0]+rand(-180,180),y:p[1]+rand(-150,150),w:rand(55,125),h:rand(50,110),bush:j%3===0,kind:j%3===0?"bush":"rock"});});
+    // Purposeful cover clusters around the playable storm, not scattered across empty land.
+    var spots=[[1050,900],[1650,670],[2350,860],[2900,1250],[1150,1650],[1950,1850],[2670,1800],[3300,2050],[1550,1260],[2420,1390]];
+    spots.forEach(function(c,i){
+      // One or two large camp bushes per cover area; every bush is enterable.
+      var count=i%3===0?2:1;
+      for(var j=0;j<count;j++){
+        var x=c[0]+(j?145:0),y=c[1]+(j?-80:0);
+        obstacles.push({x:x,y:y,w:155,h:128,bush:true,kind:"bush"});
+      }
+      // Nearby solid cover gives the location a reason to exist.
+      obstacles.push({x:c[0]-115,y:c[1]+155,w:96,h:65,bush:false,kind:"rock"});
+      if(i%2===0)obstacles.push({x:c[0]+175,y:c[1]+90,w:100,h:64,bush:false,kind:"wall"});
+    });
+    // Sparse small cover, no random decorative bushes.
+    [[750,1250],[3080,780],[3500,1530],[850,2050],[2050,450],[2850,2220]].forEach(function(c,i){
+      obstacles.push({x:c[0],y:c[1],w:i%2?88:115,h:i%2?66:80,bush:false,kind:i%2?"wall":"rock"});
+    });
+  }
+  function inBush(p){
+    return obstacles.some(function(o){
+      if(o.kind!=="bush")return false;
+      var rx=o.w*.5-12,ry=o.h*.5-12;
+      return Math.pow((p.x-o.x-o.w*.5)/rx,2)+Math.pow((p.y-o.y-o.h*.5)/ry,2)<1;
+    });
+  }
+  function canSee(observer,target){
+    return !inBush(target)||inBush(observer)&&obstacles.some(function(o){
+      return o.kind==="bush"&&
+        Math.pow((observer.x-o.x-o.w*.5)/(o.w*.5-12),2)+Math.pow((observer.y-o.y-o.h*.5)/(o.h*.5-12),2)<1&&
+        Math.pow((target.x-o.x-o.w*.5)/(o.w*.5-12),2)+Math.pow((target.y-o.y-o.h*.5)/(o.h*.5-12),2)<1;
+    })||Math.hypot(observer.x-target.x,observer.y-target.y)<75;
   }
   function obstacleHit(o,x,y,pad){
     if(o.kind==="bush")return false;
@@ -136,13 +165,13 @@
   }
   // Each round has a pause and a smooth pull. The final rounds MOVE instead of closing to zero.
   var stormRounds=[
-    {wait:12,move:21,r:1350,shift:170},
-    {wait:10,move:20,r:970,shift:220},
-    {wait:9,move:19,r:690,shift:220},
-    {wait:8,move:18,r:470,shift:180},
-    {wait:8,move:17,r:430,shift:270},
-    {wait:7,move:16,r:430,shift:290},
-    {wait:7,move:16,r:430,shift:300}
+    {wait:11,move:19,r:1350,shift:170},
+    {wait:9,move:18,r:970,shift:220},
+    {wait:8,move:17,r:690,shift:220},
+    {wait:7,move:16,r:470,shift:180},
+    {wait:7,move:15,r:430,shift:270},
+    {wait:6,move:14,r:430,shift:290},
+    {wait:6,move:14,r:430,shift:300}
   ];
   function nextStormTarget(round){
     var angle=rand(0,Math.PI*2),d=round.shift;
@@ -183,19 +212,28 @@
       }else{
         p.walking=false;
         p.ai-=dt;
-        if(p.ai<=0){p.target=nearest(p,true)||nearest(p,false);p.ai=rand(.32,.62);}
-        var t=p.target&&p.target.alive?p.target:nearest(p,true)||nearest(p,false);
+        if(p.ai<=0){p.target=nearest(p,true)||nearest(p,false);if(p.target&&!canSee(p,p.target))p.target=null;p.ai=rand(.32,.62);}
+        var t=p.target&&p.target.alive&&canSee(p,p.target)?p.target:nearest(p,true)||nearest(p,false);if(t&&!canSee(p,t))t=null;
         if(t){
           var a=Math.atan2(t.y-p.y,t.x-p.x),d=dist(p,t),visible=clearShot(p,t);p.angle=a;
           var strafe=Math.sin(elapsed*1.8+p.x*.018)*.62;
           var mx=0,my=0;
           bullets.forEach(function(b){if(b.owner===p||!b.owner.alive)return;var bx=p.x-b.x,by=p.y-b.y,bd=Math.hypot(bx,by);var closing=b.vx*bx+b.vy*by<0;if(bd<125&&closing){mx+=bx/Math.max(1,bd)*1.25;my+=by/Math.max(1,bd)*1.25;}});
-          if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
+          if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r-145){var za=Math.atan2(zone.y-p.y,zone.x-p.x);mx=Math.cos(za)*1.6;my=Math.sin(za)*1.6;}
+          else if(p.hp<p.maxHp*.38&&d<370){mx=-Math.cos(a)*1.4;my=-Math.sin(a)*1.4;}
+          else if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
           if(!visible){var side=(Math.sin(elapsed+p.y*.01)>0?1:-1);mx+=-Math.sin(a)*side*.85;my+=Math.cos(a)*side*.85;}
           else {mx-=Math.sin(a)*strafe;my+=Math.cos(a)*strafe;}
           p.walking=Math.hypot(mx,my)>.08;
           movePlayer(p,mx,my,dt);
-          if(visible&&d<p.range*.9&&Math.random()<.44)shoot(p,a+rand(-.045,.045),t);
+          if(visible&&d<p.range*.9&&Math.random()<.34)shoot(p,a+rand(-.045,.045),t);
+        }else{
+          // Without a visible opponent, stay inside the safe zone and reposition toward cover.
+          var safe=Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r-180;
+          var cover=obstacles.filter(function(o){return o.kind==="bush"&&Math.hypot(o.x+o.w/2-zone.x,o.y+o.h/2-zone.y)<zone.r-80;})
+            .sort(function(a,b){return Math.hypot(a.x+a.w/2-p.x,a.y+a.h/2-p.y)-Math.hypot(b.x+b.w/2-p.x,b.y+b.h/2-p.y);})[0];
+          var tx=safe?zone.x:cover?cover.x+cover.w/2:zone.x,ty=safe?zone.y:cover?cover.y+cover.h/2:zone.y;
+          if(Math.hypot(tx-p.x,ty-p.y)>55){var aa=Math.atan2(ty-p.y,tx-p.x);movePlayer(p,Math.cos(aa),Math.sin(aa),dt);p.walking=true;}
         }
       }
     });
@@ -404,7 +442,7 @@
       }
     });
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
-    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
+    players.forEach(function(p){if(!p.alive||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.72:.82;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);ctx.restore();});
     drawAimGuide();
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
     drawMinimap();drawStormStatus();
