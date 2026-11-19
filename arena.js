@@ -8,7 +8,7 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
-  var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, dashHeld = false;
+  var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   var statsKey = "restemad-arena-stats-v1";
   var stats = {wins:0, eliminations:0, trophies:0, games:0};
   try { stats = Object.assign(stats, JSON.parse(localStorage.getItem(statsKey)||"{}")); } catch(e) {}
@@ -80,7 +80,7 @@
   }
   function startGame(which){
     mode=which; players=[];bullets=[];particles=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;
-    makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780}; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
+    makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
       var food=foods[f],botHp=Math.round(food.hp*1.35);players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:botHp,maxHp:botHp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage*.85,rate:food.rate*1.25,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0});
@@ -133,9 +133,36 @@
       if(!obstacles.some(function(o){return obstacleHit(o,p.x,ny,p.r);}))p.y=ny;
     }
   }
+  // Each round has a pause and a smooth pull. The final rounds MOVE instead of closing to zero.
+  var stormRounds=[
+    {wait:12,move:21,r:1350,shift:170},
+    {wait:10,move:20,r:970,shift:220},
+    {wait:9,move:19,r:690,shift:220},
+    {wait:8,move:18,r:470,shift:180},
+    {wait:8,move:17,r:430,shift:270},
+    {wait:7,move:16,r:430,shift:290},
+    {wait:7,move:16,r:430,shift:300}
+  ];
+  function nextStormTarget(round){
+    var angle=rand(0,Math.PI*2),d=round.shift;
+    return {x:clamp(zone.x+Math.cos(angle)*d,round.r+35,WORLD_W-round.r-35),
+            y:clamp(zone.y+Math.sin(angle)*d,round.r+35,WORLD_H-round.r-35),r:round.r};
+  }
+  function updateStorm(dt){
+    var round=stormRounds[Math.min(stormStage,stormRounds.length-1)];
+    stormTime+=dt;
+    if(stormTime<=round.wait)return;
+    if(!stormStart){stormStart={x:zone.x,y:zone.y,r:zone.r};stormTarget=nextStormTarget(round);}
+    var t=clamp((stormTime-round.wait)/round.move,0,1);
+    var eased=t*t*(3-2*t);
+    zone.x=stormStart.x+(stormTarget.x-stormStart.x)*eased;
+    zone.y=stormStart.y+(stormTarget.y-stormStart.y)*eased;
+    zone.r=stormStart.r+(stormTarget.r-stormStart.r)*eased;
+    if(t>=1){stormStage=Math.min(stormStage+1,stormRounds.length-1);stormTime=0;stormStart=null;stormTarget=null;}
+  }
   function update(dt){
     elapsed+=dt;
-    if(elapsed>5&&zone.r>260)zone.r=Math.max(260,zone.r-62*dt);
+    updateStorm(dt);
     players.forEach(function(p){
       if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=19*dt;if(p.hp<=0){p.hp=0;p.alive=false;addKillFeed(null,p);if(p===me){finish(false);}}}
@@ -350,9 +377,8 @@
     var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
     // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
-    ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=17;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=4;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();
-    // The world boundary stays visible, while the camera can follow the hero to its edge.
-    ctx.save();ctx.strokeStyle="rgba(56,85,57,.6)";ctx.lineWidth=10;ctx.setLineDash([30,15]);ctx.strokeRect(0,0,WORLD_W,WORLD_H);ctx.restore();
+    ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();
+    // No artificial border line: the storm is a visual effect, never a collision wall.
     obstacles.forEach(function(o){
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
       if(o.kind==="wall"){
@@ -385,16 +411,17 @@
   function drawStormStatus(){
     if(!running||!me||!me.alive)return;
     var distance=Math.hypot(me.x-zone.x,me.y-zone.y),outside=distance>zone.r;
-    var until=Math.max(0,5-elapsed),remaining=Math.max(0,zone.r-260);
-    var label=outside?"UDEN FOR ZONEN!":until>0?"ZONEN LUKKER OM "+Math.ceil(until)+"s":remaining>0?"ZONEN KRYMPER":"SIDSTE ZONE";
-    var x=22,y=18,w=outside?248:214,h=43;
+    var round=stormRounds[Math.min(stormStage,stormRounds.length-1)];
+    var until=Math.max(0,round.wait-stormTime),moving=stormTime>round.wait;
+    var label=outside?"UDEN FOR ZONEN!":!moving?"NÆSTE ZONE OM "+Math.ceil(until)+"s":stormStage>=4?"MOVING ZONE":"ZONEN BEVÆGER SIG";
+    var x=22,y=18,w=outside?248:235,h=43;
     ctx.save();ctx.fillStyle=outside?"rgba(113,26,73,.96)":"rgba(29,42,43,.88)";
     ctx.beginPath();ctx.roundRect(x,y,w,h,12);ctx.fill();
     ctx.strokeStyle=outside?"#ff8bb6":"rgba(255,255,255,.18)";ctx.lineWidth=2;ctx.stroke();
     ctx.font="800 14px system-ui";ctx.textAlign="left";ctx.textBaseline="middle";
     ctx.fillStyle=outside?"#fff":"#ffe3f1";ctx.fillText(label,x+13,y+16);
     ctx.fillStyle="#f3a8cc";ctx.fillRect(x+13,y+30,w-26,4);
-    ctx.fillStyle="#fff";ctx.fillRect(x+13,y+30,(w-26)*clamp(zone.r/1780,0,1),4);
+    ctx.fillStyle="#fff";ctx.fillRect(x+13,y+30,(w-26)*(moving?clamp((stormTime-round.wait)/round.move,0,1):clamp(stormTime/round.wait,0,1)),4);
     if(outside){
       var a=Math.atan2(zone.y-me.y,zone.x-me.x),cx=W/2,cy=H/2;
       ctx.save();ctx.translate(cx+Math.cos(a)*110,cy+Math.sin(a)*88);ctx.rotate(a);
