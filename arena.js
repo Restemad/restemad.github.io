@@ -275,13 +275,13 @@
   }
   // Each round has a pause and a smooth pull. The final rounds MOVE instead of closing to zero.
   var stormRounds=[
-    {wait:8,move:15,r:1350,shift:170},
-    {wait:7,move:14,r:970,shift:220},
-    {wait:6,move:13,r:690,shift:220},
-    {wait:6,move:12,r:470,shift:180},
-    {wait:5,move:12,r:430,shift:270},
-    {wait:5,move:11,r:430,shift:290},
-    {wait:5,move:11,r:430,shift:300}
+    {wait:7,move:13,r:1350,shift:170},
+    {wait:6,move:12,r:970,shift:220},
+    {wait:5,move:11,r:690,shift:220},
+    {wait:5,move:10,r:470,shift:180},
+    {wait:4,move:10,r:430,shift:270},
+    {wait:4,move:9,r:430,shift:290},
+    {wait:4,move:9,r:430,shift:300}
   ];
   function nextStormTarget(round){
     var angle=rand(0,Math.PI*2),d=round.shift;
