@@ -111,7 +111,7 @@
       if(!game)throw Error("Online-spilmotoren blev ikke indlæst.");
       if(new Set(people.map(function(p){return p.user_id;})).size!==people.length)throw Error("Spillerlisten indeholder dubletter.");
       if(!people.some(function(p){return p.user_id===uid}))throw Error("Din spiller findes ikke i rummet.");
-      ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false,ack:true}}});
+      ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false,ack:false}}});
       channel=ch;
       var started=false, ready=new Set([uid]), init={roomId:data.id,roster:people};
       var statusEl=el("arenaRoomStatus");
