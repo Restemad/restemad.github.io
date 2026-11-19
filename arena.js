@@ -804,11 +804,13 @@
     var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
     if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
     var angle=isTouch()&&touchAim.active?Math.atan2(touchAim.y,touchAim.x):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
+    if(net.channel.state!=="joined")return;
     net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?(touchAim.active||touchFire):(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
     superPressed=false;
   }
   function sendNetSnapshot(done){
     if(!net||!net.host)return;
+    if(net.channel.state!=="joined")return;
     net.channel.send({type:"broadcast",event:"state",payload:{
       players:players.map(function(p){return {id:p.netId,x:Math.round(p.x),y:Math.round(p.y),hp:Math.round(p.hp),alive:p.alive,angle:Math.round(p.angle*100)/100,ammo:p.ammo,superCharge:Math.round(p.superCharge),shield:p.shield,kills:p.kills,walking:p.walking,muzzleFlash:p.muzzleFlash,hurt:p.hurt};}),
       bullets:bullets.slice(-(players.length>2?45:90)).map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
@@ -877,7 +879,7 @@
     countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent="ONLINE SHOWDOWN";countdownTick();
     running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
   }
-  window.RESTEMAD_ONLINE_GAME={start:startOnline,receive:receiveNetSnapshot,input:function(id,cmd){
+  window.RESTEMAD_ONLINE_GAME={start:startOnline,receive:receiveNetSnapshot,snapshotAge:function(){return net&&!net.host?performance.now()-netSnapshotAt:0;},sync:function(){if(net&&net.host)sendNetSnapshot(false);},input:function(id,cmd){
     if(!net||!net.host||id===net.userId||!players.some(function(p){return p.netId===id})||!cmd)return;
     var dx=Number(cmd.dx),dy=Number(cmd.dy),angle=Number(cmd.angle);
     if(!Number.isFinite(dx)||!Number.isFinite(dy)||!Number.isFinite(angle))return;
