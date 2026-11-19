@@ -5,7 +5,7 @@
   if (!root) return;
 
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
-  var W = 960, H = 600, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
+  var W = 960, H = 600, ZOOM = .76, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], obstacles = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, dashHeld = false;
@@ -125,8 +125,8 @@
         if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
         if(p.dash>0){if(Math.hypot(dx,dy)<.1){dx=Math.cos(p.angle);dy=Math.sin(p.angle);}movePlayer(p,dx,dy,dt,2.9);if(Math.random()<.8)particles.push({x:p.x,y:p.y,vx:rand(-35,35),vy:rand(-35,35),life:.28,color:"#fff0a8"});}else movePlayer(p,dx,dy,dt);
         var target=isTouch()?touchAim:pointer;
-        if(target.active){p.angle=Math.atan2(target.y+camera.y-p.y,target.x+camera.x-p.x);}
-        else p.angle=Math.atan2(pointer.y+camera.y-p.y,pointer.x+camera.x-p.x);
+        if(target.active){p.angle=Math.atan2(target.y/ZOOM+camera.y-p.y,target.x/ZOOM+camera.x-p.x);}
+        else p.angle=Math.atan2(pointer.y/ZOOM+camera.y-p.y,pointer.x/ZOOM+camera.x-p.x);
         if(pointer.down||keys[" "]||touchFire)shoot(p,p.angle);
       }else{
         p.ai-=dt;
@@ -173,31 +173,57 @@
     root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;
   }
   function drawFoodHero(p,now){
-    var phase=now*.009+p.x*.017, moving=running?Math.sin(phase):0, bob=Math.abs(moving)*1.8;
-    var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),base=foods[p.fighter].color;
-    ctx.save();ctx.translate(p.x,p.y-bob);
-    // Soft contact shadow and little animated feet.
-    ctx.fillStyle="rgba(22,43,28,.27)";ctx.beginPath();ctx.ellipse(0,18,25,9,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle="#59402d";ctx.lineWidth=7;ctx.lineCap="round";ctx.beginPath();
-    ctx.moveTo(-8,8);ctx.lineTo(-10+moving*4,20);ctx.moveTo(8,8);ctx.lineTo(10-moving*4,20);ctx.stroke();
-    ctx.strokeStyle="#9b7047";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-9,18);ctx.lineTo(-14+moving*4,19);ctx.moveTo(9,18);ctx.lineTo(14-moving*4,19);ctx.stroke();
-    // Arms sit behind the food body.
-    ctx.strokeStyle="#704a30";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(-13,-2);ctx.lineTo(-22,-9-moving*2);ctx.moveTo(13,-2);ctx.lineTo(22,-9+moving*2);ctx.stroke();
-    ctx.strokeStyle="#d6a16a";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-19,-8-moving*2);ctx.lineTo(-23,-11-moving*2);ctx.moveTo(19,-8+moving*2);ctx.lineTo(23,-11+moving*2);ctx.stroke();
-    // Thick dark lower rim gives the sprite a toy-like 3D silhouette.
-    ctx.fillStyle="#65472f";ctx.beginPath();ctx.ellipse(0,1,23,20,0,0,Math.PI*2);ctx.fill();
-    var g=ctx.createRadialGradient(-9,-12,2,4,0,30);g.addColorStop(0,"#fff9df");g.addColorStop(.24,base);g.addColorStop(.78,base);g.addColorStop(1,"#704a30");
-    ctx.fillStyle=g;
-    if(p.fighter===0){ctx.beginPath();ctx.ellipse(0,-1,21,17,-.12,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ffe39a";ctx.beginPath();ctx.ellipse(-1,-10,18,8,-.12,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#bd8736";ctx.lineWidth=2;ctx.beginPath();ctx.arc(-2,-9,14,.2,2.8);ctx.stroke();}
-    else if(p.fighter===1){ctx.beginPath();ctx.ellipse(0,-1,21,17,-.22,0,Math.PI*2);ctx.fill();ctx.fillStyle="#77c56e";ctx.beginPath();ctx.ellipse(0,-5,15,10,-.25,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ef7058";ctx.beginPath();ctx.arc(-8,-5,4,0,Math.PI*2);ctx.arc(7,-7,4,0,Math.PI*2);ctx.fill();ctx.fillStyle="#f7df9a";ctx.beginPath();ctx.ellipse(0,-14,14,4,-.2,0,Math.PI*2);ctx.fill();}
-    else if(p.fighter===2){ctx.beginPath();ctx.roundRect(-20,-18,40,34,11);ctx.fill();ctx.fillStyle="#f5dba6";ctx.beginPath();ctx.ellipse(0,-14,18,8,0,0,Math.PI*2);ctx.fill();ctx.fillStyle="#e66c43";ctx.beginPath();ctx.arc(-9,-13,4,0,Math.PI*2);ctx.arc(7,-15,4,0,Math.PI*2);ctx.fill();ctx.fillStyle="#69a65a";ctx.beginPath();ctx.arc(1,-18,4,0,Math.PI*2);ctx.fill();}
-    else{ctx.beginPath();ctx.roundRect(-19,-19,38,36,8);ctx.fill();ctx.fillStyle="#f4cb83";ctx.beginPath();ctx.roundRect(-13,-14,26,25,5);ctx.fill();ctx.strokeStyle="#a76d3b";ctx.lineWidth=2;ctx.strokeRect(-12,-13,24,23);}
-    // Gloss, cheeks, eyes and smile.
-    ctx.fillStyle="rgba(255,255,255,.38)";ctx.beginPath();ctx.ellipse(-9,-12,7,4,-.55,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="rgba(255,130,110,.55)";ctx.beginPath();ctx.arc(-12,1,3,0,Math.PI*2);ctx.arc(12,1,3,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#30271f";ctx.beginPath();ctx.ellipse(faceX*4-5,faceY*2-5,2.8,3.5,0,0,Math.PI*2);ctx.ellipse(faceX*4+5,faceY*2-5,2.8,3.5,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(faceX*4-5.7,faceY*2-6,1,0,Math.PI*2);ctx.arc(faceX*4+4.3,faceY*2-6,1,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle="#55372a";ctx.lineWidth=2;ctx.beginPath();ctx.arc(faceX*4,faceY*2+1,4,.15,Math.PI-.15);ctx.stroke();
+    var f=foods[p.fighter],phase=now*.006+p.x*.013,step=running?Math.sin(phase):0,bob=Math.abs(step)*2;
+    var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),dark="#4b3024";
+    ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12);
+    // Ground shadow, chunky boots and gloves create a toy-hero silhouette.
+    ctx.fillStyle="rgba(25,39,27,.28)";ctx.beginPath();ctx.ellipse(0,22,29,10,0,0,Math.PI*2);ctx.fill();
+    ctx.lineCap="round";ctx.strokeStyle="#493326";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-10,10);ctx.lineTo(-13+step*5,23);ctx.moveTo(10,10);ctx.lineTo(13-step*5,23);ctx.stroke();
+    ctx.fillStyle="#38271f";ctx.beginPath();ctx.ellipse(-15+step*5,24,9,5,-.15,0,Math.PI*2);ctx.ellipse(15-step*5,24,9,5,.15,0,Math.PI*2);ctx.fill();
+    // Backpack and swinging arms.
+    ctx.fillStyle="#68472e";ctx.beginPath();ctx.roundRect(-25,-9,12,22,5);ctx.fill();
+    ctx.strokeStyle="#6b442c";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-17,-5);ctx.lineTo(-28,-1+step*3);ctx.moveTo(17,-5);ctx.lineTo(28,-1-step*3);ctx.stroke();
+    ctx.fillStyle="#f0c18b";ctx.beginPath();ctx.arc(-29,-1+step*3,6,0,Math.PI*2);ctx.arc(29,-1-step*3,6,0,Math.PI*2);ctx.fill();
+    // Each fighter has a recognisable food-shaped body, not a generic blob.
+    if(p.fighter===0){
+      // Bananpandekage: a tall stack of golden pancakes with butter and syrup.
+      ctx.fillStyle="#92521f";ctx.beginPath();ctx.ellipse(0,8,25,15,0,0,Math.PI*2);ctx.fill();
+      for(var k=0;k<3;k++){var yy=5-k*9;ctx.fillStyle=k===2?"#f5ce70":"#e6a844";ctx.beginPath();ctx.ellipse(0,yy,25-k*1.5,10,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#a9682e";ctx.lineWidth=2;ctx.stroke();}
+      ctx.fillStyle="#fff0b0";ctx.beginPath();ctx.roundRect(-7,-25,14,8,3);ctx.fill();
+      ctx.fillStyle="#e7a52d";ctx.beginPath();ctx.moveTo(11,-18);ctx.quadraticCurveTo(19,-10,15,-3);ctx.quadraticCurveTo(11,1,13,5);ctx.lineTo(8,5);ctx.quadraticCurveTo(6,-3,11,-8);ctx.closePath();ctx.fill();
+      ctx.fillStyle="#b96c2d";ctx.beginPath();ctx.arc(-14,7,3,0,Math.PI*2);ctx.arc(14,7,3,0,Math.PI*2);ctx.fill();
+    }else if(p.fighter===1){
+      // Grøntsagswrap: toasted tortilla roll, green filling and visible vegetables.
+      ctx.save();ctx.rotate(-.22);
+      ctx.fillStyle="#9b642e";ctx.beginPath();ctx.roundRect(-23,-23,46,44,17);ctx.fill();
+      ctx.fillStyle="#eac47a";ctx.beginPath();ctx.roundRect(-21,-25,42,39,16);ctx.fill();
+      ctx.fillStyle="#5e9d48";ctx.beginPath();ctx.ellipse(0,-5,17,13,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#e94f43";ctx.beginPath();ctx.arc(-9,-9,5,0,Math.PI*2);ctx.arc(8,-1,5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#f6df9b";ctx.beginPath();ctx.arc(2,-14,5,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle="#fff0bf";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-15,-20);ctx.lineTo(15,-20);ctx.stroke();ctx.restore();
+      ctx.fillStyle="#3d793e";ctx.beginPath();ctx.moveTo(-17,-24);ctx.quadraticCurveTo(-31,-37,-25,-40);ctx.quadraticCurveTo(-10,-37,-9,-23);ctx.fill();
+    }else if(p.fighter===2){
+      // Pastasalat: a colourful bowl overflowing with pasta spirals and vegetables.
+      ctx.fillStyle="#9b542d";ctx.beginPath();ctx.ellipse(0,5,27,20,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#f2d49a";ctx.beginPath();ctx.ellipse(0,1,25,18,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#d9893d";ctx.beginPath();ctx.ellipse(-8,-5,9,5,-.5,0,Math.PI*2);ctx.ellipse(8,-8,9,5,.55,0,Math.PI*2);ctx.ellipse(1,5,9,5,-.3,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle="#f8e4b7";ctx.lineWidth=3;ctx.beginPath();ctx.arc(-8,-5,5,0,Math.PI*1.7);ctx.arc(8,-8,5,0,Math.PI*1.7);ctx.stroke();
+      ctx.fillStyle="#e34e3f";ctx.beginPath();ctx.arc(-16,3,4,0,Math.PI*2);ctx.arc(13,4,4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#4f9b4d";ctx.beginPath();ctx.arc(0,-14,5,0,Math.PI*2);ctx.arc(18,-13,4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#fff1c9";ctx.fillRect(-18,17,36,4);
+    }else{
+      // Hjemmelavede croutoner: a crisp golden bread cube with crust and seasoning.
+      ctx.fillStyle="#814b27";ctx.beginPath();ctx.roundRect(-23,-22,46,43,9);ctx.fill();
+      ctx.fillStyle="#d79a4d";ctx.beginPath();ctx.roundRect(-20,-26,40,40,8);ctx.fill();
+      ctx.fillStyle="#f3c879";ctx.beginPath();ctx.moveTo(-15,-20);ctx.lineTo(8,-23);ctx.lineTo(17,-14);ctx.lineTo(14,9);ctx.lineTo(-13,13);ctx.closePath();ctx.fill();
+      ctx.strokeStyle="#a96631";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-15,-18);ctx.lineTo(-8,-11);ctx.lineTo(-13,-2);ctx.moveTo(10,-20);ctx.lineTo(5,-9);ctx.lineTo(15,-3);ctx.stroke();
+      ctx.fillStyle="#4f8d43";ctx.beginPath();ctx.arc(-9,-15,2,0,Math.PI*2);ctx.arc(10,4,2,0,Math.PI*2);ctx.arc(3,-18,2,0,Math.PI*2);ctx.fill();
+    }
+    // Face is deliberately bold and readable, with brows, shine and a confident grin.
+    ctx.fillStyle="rgba(255,255,255,.45)";ctx.beginPath();ctx.ellipse(-10,-17,8,4,-.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#30251f";ctx.beginPath();ctx.ellipse(faceX*4-6,faceY*2-8,3.3,4.4,0,0,Math.PI*2);ctx.ellipse(faceX*4+6,faceY*2-8,3.3,4.4,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(faceX*4-7,-9,1.2,0,Math.PI*2);ctx.arc(faceX*4+5,-9,1.2,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=dark;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(faceX*4,faceY*2+1,5,.12,Math.PI-.12);ctx.stroke();
     ctx.restore();
   }
   function drawAimGuide(){
@@ -220,7 +246,7 @@
     ctx.globalAlpha=1;ctx.restore();
   }
   function draw(){
-    ctx.clearRect(0,0,W,H);if(me){camera.x=clamp(me.x-W/2,0,WORLD_W-W);camera.y=clamp(me.y-H/2,0,WORLD_H-H);}ctx.save();ctx.translate(-camera.x,-camera.y);
+    ctx.clearRect(0,0,W,H);if(me){camera.x=clamp(me.x-W/(2*ZOOM),0,WORLD_W-W/ZOOM);camera.y=clamp(me.y-H/(2*ZOOM),0,WORLD_H-H/ZOOM);}ctx.save();ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
     var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+W,camera.y+H);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x,camera.y,W,H);
     ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+W+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+H+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();}}
     ctx.save();ctx.strokeStyle="rgba(220,65,55,.9)";ctx.lineWidth=10;ctx.setLineDash([20,14]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="rgba(210,65,55,.055)";ctx.beginPath();ctx.rect(0,0,WORLD_W,WORLD_H);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2,true);ctx.fill("evenodd");ctx.restore();
@@ -243,7 +269,7 @@
     });
     drawAimGuide();
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
-    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.fillRect(p.x-22,p.y-34,44,6);ctx.fillStyle="#62C96B";ctx.fillRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6);if(p.human){ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText("DIG",p.x,p.y-45);}});
+    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.fillRect(p.x-22,p.y-34,44,6);ctx.fillStyle="#62C96B";ctx.fillRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6);if(p.human){ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText("DIG",p.x,p.y-48);}});
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});ctx.restore();
   }
   function loop(now){if(!running)return;var dt=Math.min((now-last)/1000,.035);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop);}
