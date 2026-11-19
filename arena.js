@@ -675,20 +675,25 @@
   // One unified scoreboard: minimap, match stats and elimination feed.
   function drawSuperHud(){
     if(!running||!me||!me.alive)return;
-    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-110,w=188;
-    ctx.save();ctx.fillStyle="rgba(24,41,32,.86)";ctx.beginPath();ctx.roundRect(x,y,w,78,12);ctx.fill();
-    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.textAlign="left";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+17);
-    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+27,w-24,9,5);ctx.fill();
-    ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+27,(w-24)*charge/100,9,5);ctx.fill();
+    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-147,w=188;
+    ctx.save();ctx.fillStyle="rgba(24,41,32,.9)";ctx.beginPath();ctx.roundRect(x,y,w,115,12);ctx.fill();
+    var hp=Math.max(0,Math.ceil(me.hp||0)),maxHp=Math.max(1,Math.ceil(me.maxHp||1));
+    ctx.fillStyle="#fff";ctx.font="800 13px system-ui";ctx.textAlign="left";ctx.fillText("❤️ LIV "+hp+" / "+maxHp,x+12,y+18);
+    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+25,w-24,12,5);ctx.fill();
+    ctx.fillStyle=hp/maxHp>.55?"#69e67d":hp/maxHp>.25?"#ffd45c":"#ff6262";
+    ctx.beginPath();ctx.roundRect(x+12,y+25,(w-24)*clamp(hp/maxHp,0,1),12,5);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+53);
+    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+63,w-24,9,5);ctx.fill();
+    ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+63,(w-24)*charge/100,9,5);ctx.fill();
     // Fast-filling ammo indicators: weaker fighters have larger magazines.
     var cap=ammoCapacity(me),ammo=me.ammo===undefined?cap:me.ammo;
     ctx.fillStyle="#fff";ctx.font="800 12px system-ui";
-    ctx.fillText("SKUD "+ammo+"/"+cap,x+12,y+63);
+    ctx.fillText("SKUD "+ammo+"/"+cap,x+12,y+99);
     var gap=3,slotWidth=(w-98-(cap-1)*gap)/cap;
     for(var slot=0;slot<cap;slot++){
       var sx=x+86+slot*(slotWidth+gap),filled=slot<ammo;
       ctx.fillStyle=filled?"#ffe084":"#374a3c";
-      ctx.beginPath();ctx.roundRect(sx,y+53,slotWidth,12,3);ctx.fill();
+      ctx.beginPath();ctx.roundRect(sx,y+89,slotWidth,12,3);ctx.fill();
       if(!filled&&slot===ammo){
         ctx.fillStyle="#d7a64d";ctx.beginPath();
         ctx.roundRect(sx,y+53,slotWidth*clamp((me.reloadClock||0)/ammoReload(me),0,1),12,3);ctx.fill();
