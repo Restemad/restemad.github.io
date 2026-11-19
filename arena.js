@@ -163,7 +163,7 @@
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
-    audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.65;countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
@@ -227,11 +227,13 @@
     target.hurt=.22;target.hitKick=.18;if(damage>0){burst(target.x,target.y,attacker?attacker.color:"#ff94ac",Math.min(10,Math.max(3,Math.ceil(damage/4))),105);ring(target.x,target.y,"#fff5ca",28);if(target===me)screenShake=Math.max(screenShake,6);else if(attacker===me)screenShake=Math.max(screenShake,2.5);}
     if(attacker&&attacker!==target&&damage>0)attacker.superCharge=Math.min(100,(attacker.superCharge||0)+Math.max(6,damage*.85));
   }
+  function ammoCapacity(p){return [6,3,4,4][p.fighter]||3;}
+  function ammoReload(p){return [.52,1.05,.85,.78][p.fighter]||1;}
   function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
-    if(p.ammo===undefined)p.ammo=3;
+    if(p.ammo===undefined)p.ammo=ammoCapacity(p);
     if(p.ammo<=0)return;
-    p.ammo--;p.reloadClock=0;
+    p.ammo--;
     p.cool=p.rate;p.recoil=.16;p.muzzleFlash=.11;p.revealed=1.1;if(p.human)sound("shot");
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
@@ -307,8 +309,12 @@
     players.forEach(function(p){
       if(!p.alive)return;
       p.superCharge=p.superCharge||0;
-      if(p.ammo===undefined)p.ammo=3;
-      if(p.ammo<3){p.reloadClock=(p.reloadClock||0)+dt;if(p.reloadClock>=1.75){p.ammo++;p.reloadClock=0;}}else p.reloadClock=0;
+      var capacity=ammoCapacity(p),reload=ammoReload(p);
+      if(p.ammo===undefined)p.ammo=capacity;
+      if(p.ammo<capacity){
+        p.reloadClock=(p.reloadClock||0)+dt;
+        while(p.reloadClock>=reload&&p.ammo<capacity){p.ammo++;p.reloadClock-=reload;}
+      }else p.reloadClock=0;
       p.muzzleFlash=Math.max(0,(p.muzzleFlash||0)-dt);
       p.hitKick=Math.max(0,(p.hitKick||0)-dt);
       p.healWait=Math.max(0,(p.healWait||0)-dt);
@@ -652,12 +658,19 @@
     ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.textAlign="left";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+17);
     ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+27,w-24,9,5);ctx.fill();
     ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+27,(w-24)*charge/100,9,5);ctx.fill();
-    // Three recharging ammo slots, independent of the super meter.
-    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.fillText("SKUD  "+(me.ammo===undefined?3:me.ammo)+"/3",x+12,y+63);
-    for(var slot=0;slot<3;slot++){
-      var sx=x+91+slot*27,filled=slot<(me.ammo===undefined?3:me.ammo);
-      ctx.fillStyle=filled?"#ffe084":"#374a3c";ctx.beginPath();ctx.roundRect(sx,y+53,21,12,4);ctx.fill();
-      if(!filled&&slot===(me.ammo||0)){ctx.fillStyle="#d7a64d";ctx.beginPath();ctx.roundRect(sx,y+53,21*clamp((me.reloadClock||0)/1.75,0,1),12,4);ctx.fill();}
+    // Fast-filling ammo indicators: weaker fighters have larger magazines.
+    var cap=ammoCapacity(me),ammo=me.ammo===undefined?cap:me.ammo;
+    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";
+    ctx.fillText("SKUD "+ammo+"/"+cap,x+12,y+63);
+    var gap=3,slotWidth=(w-98-(cap-1)*gap)/cap;
+    for(var slot=0;slot<cap;slot++){
+      var sx=x+86+slot*(slotWidth+gap),filled=slot<ammo;
+      ctx.fillStyle=filled?"#ffe084":"#374a3c";
+      ctx.beginPath();ctx.roundRect(sx,y+53,slotWidth,12,3);ctx.fill();
+      if(!filled&&slot===ammo){
+        ctx.fillStyle="#d7a64d";ctx.beginPath();
+        ctx.roundRect(sx,y+53,slotWidth*clamp((me.reloadClock||0)/ammoReload(me),0,1),12,3);ctx.fill();
+      }
     }
     ctx.restore();
   }
@@ -709,7 +722,7 @@
     });
     ctx.restore();
   }
-  var countdownLeft=0,countdownStep=0,countdownGoHold=0;
+  var countdownLeft=0,countdownStep=0,countdownGoHold=0,countdownStartAt=0;
   var countdownOverlay=document.createElement("div");
   countdownOverlay.className="arena-countdown";countdownOverlay.hidden=true;
   countdownOverlay.innerHTML='<div class="arena-countdown-top">GØR DIG KLAR</div><div class="arena-countdown-number">3</div><div class="arena-countdown-bottom">SOLO SHOWDOWN</div>';
@@ -727,13 +740,19 @@
   }
   function loop(now){
     if(!running)return;
-    var dt=Math.min((now-last)/1000,.035);last=now;
-    if(countdownLeft>0){
-      countdownLeft=Math.max(0,countdownLeft-dt);countdownTick();
-      if(countdownLeft===0){countdownOverlay.classList.add("arena-countdown-go");}
-    }else if(!countdownOverlay.hidden&&countdownLeft===0){
-      countdownGoHold-=dt;
-      if(countdownGoHold<=0){countdownOverlay.hidden=true;countdownOverlay.classList.remove("arena-countdown-go");update(dt);}
+    var dt=Math.min(Math.max((now-last)/1000,0),.035);last=now;
+    // Countdown uses real elapsed time, not the capped simulation dt.
+    // This keeps 3-2-1 accurate even on slow iPads and after tab throttling.
+    if(!countdownOverlay.hidden){
+      var seconds=(now-countdownStartAt)/1000;
+      countdownLeft=Math.max(0,3-seconds);
+      countdownTick();
+      if(seconds>=3){countdownOverlay.classList.add("arena-countdown-go");}
+      if(seconds>=3.7){
+        countdownOverlay.hidden=true;
+        countdownOverlay.classList.remove("arena-countdown-go");
+        last=now;
+      }
     }else update(dt);
     draw();if(running)raf=requestAnimationFrame(loop);
   }
