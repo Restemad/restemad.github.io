@@ -5,7 +5,7 @@
   if (!root) return;
 
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
-  var W = 960, H = 600, WORLD_W = 4800, WORLD_H = 3000, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
+  var W = 960, H = 600, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], obstacles = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0;
@@ -41,8 +41,8 @@
   }
   function makeMap(){
     obstacles=[];
-    for(var i=0;i<245;i++){var x=rand(100,WORLD_W-160),y=rand(100,WORLD_H-150),t=Math.random();obstacles.push({x:x,y:y,w:t<.3?rand(110,175):rand(48,105),h:t<.3?rand(90,145):rand(42,100),bush:t>.72,kind:t<.3?"wall":t<.72?"rock":"bush"});}
-    [[850,620],[2200,470],[3600,820],[1250,2050],[3000,2200],[4200,1900]].forEach(function(p){for(var j=0;j<7;j++)obstacles.push({x:p[0]+rand(-180,180),y:p[1]+rand(-150,150),w:rand(55,125),h:rand(50,110),bush:j%3===0,kind:j%3===0?"bush":"rock"});});
+    for(var i=0;i<170;i++){var x=rand(100,WORLD_W-130),y=rand(100,WORLD_H-120),t=Math.random();obstacles.push({x:x,y:y,w:t<.3?rand(110,175):rand(48,105),h:t<.3?rand(90,145):rand(42,100),bush:t>.72,kind:t<.3?"wall":t<.72?"rock":"bush"});}
+    [[650,500],[1800,380],[3000,650],[950,1650],[2350,1750],[3300,1500]].forEach(function(p){for(var j=0;j<7;j++)obstacles.push({x:p[0]+rand(-180,180),y:p[1]+rand(-150,150),w:rand(55,125),h:rand(50,110),bush:j%3===0,kind:j%3===0?"bush":"rock"});});
   }
   function freeSpot(away){
     var p;for(var i=0;i<240;i++){p={x:rand(130,WORLD_W-130),y:rand(130,WORLD_H-130)};var clear=!obstacles.some(function(o){return p.x>o.x-55&&p.x<o.x+o.w+55&&p.y>o.y-55&&p.y<o.y+o.h+55;});if(clear&&(!away||Math.hypot(p.x-away.x,p.y-away.y)>850))return p;}return p;
@@ -54,7 +54,7 @@
   function startGame(which){
     mode=which; players=[];bullets=[];particles=[];elapsed=0;winner=null;gameOver=false;
     makeMap(); me=spawn(selected,true);players.push(me);
-    var sectors=[[450,400],[2200,350],[4300,400],[500,1450],[2200,1450],[4300,1450],[500,2600],[2200,2600],[4300,2600]];
+    var sectors=[[350,320],[1850,300],[3450,320],[350,1200],[1850,1200],[3450,1200],[350,2100],[1850,2100],[3450,2100]];
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me),sx=sectors[i][0],sy=sectors[i][1];
       for(var tries=0;tries<100;tries++){
@@ -110,15 +110,15 @@
         if(pointer.down||keys[" "]||touchFire)shoot(p,p.angle);
       }else{
         p.ai-=dt;
-        if(p.ai<=0){p.target=nearest(p);p.ai=rand(.35,.8);}
+        if(p.ai<=0){p.target=nearest(p);p.ai=rand(.55,1.05);}
         var t=p.target&&p.target.alive?p.target:nearest(p);
         if(t){
           var a=Math.atan2(t.y-p.y,t.x-p.x),d=dist(p,t);p.angle=a;
           var strafe=Math.sin(elapsed*1.6+p.x*.02)*.55;
           var mx=0,my=0;
-          if(d>330){mx=Math.cos(a);my=Math.sin(a);}else if(d<245){mx=-Math.cos(a);my=-Math.sin(a);}
+          if(d>300){mx=Math.cos(a);my=Math.sin(a);}else if(d<220){mx=-Math.cos(a);my=-Math.sin(a);}
           movePlayer(p,mx-Math.sin(a)*strafe,my+Math.cos(a)*strafe,dt);
-          if(d<p.range*.88&&Math.random()<.72)shoot(p,a+rand(-.07,.07));
+          if(d<p.range*.82&&Math.random()<.48)shoot(p,a+rand(-.055,.055));
         }
       }
     });
