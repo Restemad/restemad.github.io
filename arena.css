@@ -120,3 +120,11 @@
  [data-theme="dark"] #arenaCanvasWrap.playing{background:#111c16}
  [data-theme="dark"] #arenaCanvasWrap.playing .arena-hud{background:rgba(26,42,33,.94);color:#e4f0e6}
 }
+
+/* New controls and touch dash */
+.arena-controls{display:flex;flex-wrap:wrap;gap:7px 18px;margin:14px 0 0;padding:12px 16px;border:1px solid rgba(90,130,95,.25);border-radius:14px;background:var(--cream);color:var(--text);font-size:.86rem}
+.arena-controls b{width:100%;color:var(--forest)}
+.arena-dash{min-width:72px;min-height:64px;border:2px solid #f0d28b;border-radius:50%;background:linear-gradient(145deg,#fff0b5,#d9a84d);color:#49351c;font-weight:900;touch-action:none;box-shadow:0 5px 0 #9a7134}
+.arena-fire,.arena-dash{user-select:none;-webkit-user-select:none}
+#arenaGame [data-theme="dark"] .arena-controls{background:#203328;color:#dce8df}
+@media(max-width:700px){.arena-controls{font-size:.76rem;gap:5px;padding:10px}.arena-controls span{width:100%}}
