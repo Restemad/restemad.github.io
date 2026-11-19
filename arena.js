@@ -6,7 +6,7 @@
 
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 3800, WORLD_H = 2400, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
-  var players = [], bullets = [], particles = [], obstacles = [], last = 0, elapsed = 0;
+  var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, dashHeld = false;
   var statsKey = "restemad-arena-stats-v1";
@@ -49,10 +49,10 @@
   }
   function spawn(i,isHuman){
     var f=foods[i],p=freeSpot(isHuman?null:me);
-    return {x:p.x,y:p.y,r:19,hp:f.hp,maxHp:f.hp,fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:f.damage,rate:f.rate,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0};
+    return {x:p.x,y:p.y,r:19,hp:f.hp,maxHp:f.hp,fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:f.damage,rate:f.rate,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
-    mode=which; players=[];bullets=[];particles=[];elapsed=0;winner=null;gameOver=false;
+    mode=which; players=[];bullets=[];particles=[];floatingTexts=[];elapsed=0;winner=null;gameOver=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780}; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     var sectors=[[350,320],[1850,300],[3450,320],[350,1200],[1850,1200],[3450,1200],[350,2100],[1850,2100],[3450,2100]];
     for(var i=0;i<9;i++){
@@ -74,7 +74,7 @@
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
   function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
-    p.cool=p.rate;
+    p.cool=p.rate;p.recoil=.16;
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
       bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
@@ -115,7 +115,7 @@
     elapsed+=dt;
     if(elapsed>8&&zone.r>260)zone.r=Math.max(260,zone.r-18*dt);
     players.forEach(function(p){
-      if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);
+      if(!p.alive)return;p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){p.hp-=16*dt;if(p.hp<=0){p.hp=0;p.alive=false;if(p===me){finish(false);}else if(me&&me.alive){me.kills++;}}}
       if(p.human){
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
@@ -154,10 +154,10 @@
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
       for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner&&true&&Math.hypot(p.x-b.x,p.y-b.y)<p.r+b.r){hit=p;break;}}
-      if(hit){hit.hp-=b.damage;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<12;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-120,120),vy:rand(-120,120),life:rand(.25,.65),color:hit.color});}return false;}
+      if(hit){hit.hp-=b.damage;hit.hurt=.13;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.22));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:.8,max:.8});if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
       return true;
     });
-    particles=particles.filter(function(p){p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;return p.life>0;});
+    particles=particles.filter(function(p){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);p.life-=dt;return p.life>0;});floatingTexts=floatingTexts.filter(function(t){t.y-=34*dt;t.life-=dt;return t.life>0;});
     var alive=players.filter(function(p){return p.alive;});
     root.querySelector("#arenaAlive").textContent=alive.length;
     root.querySelector("#arenaKills").textContent=me.kills;
@@ -176,16 +176,16 @@
     root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;
   }
   function drawFoodHero(p,now){
-    var f=foods[p.fighter],phase=now*.006+p.x*.013,step=(p.walking?Math.sin(phase):0),bob=Math.abs(step)*2;
+    var f=foods[p.fighter],phase=p.walkPhase||now*.006+p.x*.013,step=(p.walking?Math.sin(phase):Math.sin(phase*.22)*.07),bob=p.walking?Math.abs(step)*2.8:Math.sin(phase*.22)*1.35,breath=1+Math.sin(phase*.22)*.025;
     var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),dark="#4b3024";
-    ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12);
+    ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12*breath);
     // Ground shadow, chunky boots and gloves create a toy-hero silhouette.
     ctx.fillStyle="rgba(25,39,27,.28)";ctx.beginPath();ctx.ellipse(0,22,29,10,0,0,Math.PI*2);ctx.fill();
     ctx.lineCap="round";ctx.strokeStyle="#493326";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-10,10);ctx.lineTo(-13+step*5,23);ctx.moveTo(10,10);ctx.lineTo(13-step*5,23);ctx.stroke();
     ctx.fillStyle="#38271f";ctx.beginPath();ctx.ellipse(-15+step*5,24,9,5,-.15,0,Math.PI*2);ctx.ellipse(15-step*5,24,9,5,.15,0,Math.PI*2);ctx.fill();
     // Backpack and swinging arms.
     ctx.fillStyle="#68472e";ctx.beginPath();ctx.roundRect(-25,-9,12,22,5);ctx.fill();
-    ctx.strokeStyle="#6b442c";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-17,-5);ctx.lineTo(-28,-1+step*3);ctx.moveTo(17,-5);ctx.lineTo(28,-1-step*3);ctx.stroke();
+    ctx.strokeStyle="#6b442c";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-17,-5);ctx.lineTo(-28+step*2,-1+step*3);ctx.moveTo(17,-5);ctx.lineTo(28-step*2,-1-step*3);ctx.stroke();
     ctx.fillStyle="#f0c18b";ctx.beginPath();ctx.arc(-29,-1+step*3,6,0,Math.PI*2);ctx.arc(29,-1-step*3,6,0,Math.PI*2);ctx.fill();
     // Each fighter has a recognisable food-shaped body, not a generic blob.
     if(p.fighter===0){
@@ -227,6 +227,8 @@
     ctx.fillStyle="#30251f";ctx.beginPath();ctx.ellipse(faceX*4-6,faceY*2-8,3.3,4.4,0,0,Math.PI*2);ctx.ellipse(faceX*4+6,faceY*2-8,3.3,4.4,0,0,Math.PI*2);ctx.fill();
     ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(faceX*4-7,-9,1.2,0,Math.PI*2);ctx.arc(faceX*4+5,-9,1.2,0,Math.PI*2);ctx.fill();
     ctx.strokeStyle=dark;ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(faceX*4,faceY*2+1,5,.12,Math.PI-.12);ctx.stroke();
+    if(p.hurt>0){ctx.globalAlpha=Math.min(.75,p.hurt*5);ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(0,-5,27,30,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    if(p.siphonFlash>0){ctx.globalAlpha=p.siphonFlash/.7;ctx.strokeStyle="#83ff9a";ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,2,31+p.siphonFlash*12,29+p.siphonFlash*12,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
     ctx.restore();
   }
   function drawAimGuide(){
@@ -251,7 +253,7 @@
   function draw(){
     ctx.clearRect(0,0,W,H);if(me){camera.x=clamp(me.x-W/(2*ZOOM),0,WORLD_W-W/ZOOM);camera.y=clamp(me.y-H/(2*ZOOM),0,WORLD_H-H/ZOOM);}ctx.save();ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
     var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+W,camera.y+H);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x,camera.y,W,H);
-    ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+W+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+H+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();}}
+    ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+W+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+H+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
     ctx.save();ctx.strokeStyle="rgba(220,65,55,.9)";ctx.lineWidth=10;ctx.setLineDash([20,14]);ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
     obstacles.forEach(function(o){
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
@@ -263,7 +265,7 @@
         ctx.fillStyle="#65766d";ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2+lift,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
         var rg=ctx.createLinearGradient(o.x,o.y,o.x+o.w,o.y+o.h);rg.addColorStop(0,"#e1e8db");rg.addColorStop(.45,"#9eafa2");rg.addColorStop(1,"#667c70");
         ctx.fillStyle=rg;ctx.strokeStyle="#5d7467";ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-        ctx.fillStyle="rgba(255,255,255,.28)";ctx.beginPath();ctx.ellipse(o.x+o.w*.34,o.y+o.h*.3,o.w*.19,o.h*.12,-.4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="rgba(255,255,255,.28)";ctx.beginPath();ctx.ellipse(o.x+o.w*.34,o.y+o.h*.3,o.w*.19,o.h*.12,-.4,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(65,91,72,.35)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(o.x+o.w*.25,o.y+o.h*.62);ctx.lineTo(o.x+o.w*.43,o.y+o.h*.52);ctx.moveTo(o.x+o.w*.55,o.y+o.h*.72);ctx.lineTo(o.x+o.w*.72,o.y+o.h*.59);ctx.stroke();
       }else{
         var pulse=Math.sin(performance.now()*.002+o.x*.02)*2;
         ctx.fillStyle="#285e38";ctx.beginPath();ctx.ellipse(o.x+o.w/2,o.y+o.h/2+lift,o.w/2,o.h/2,0,0,Math.PI*2);ctx.fill();
@@ -273,7 +275,7 @@
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
     players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
     drawAimGuide();
-    particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;});ctx.restore();
+    particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
   }
   function loop(now){if(!running)return;var dt=Math.min((now-last)/1000,.035);last=now;update(dt);draw();if(running)raf=requestAnimationFrame(loop);}
   function setCanvasSize(){
