@@ -154,7 +154,7 @@
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
       for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner&&true&&Math.hypot(p.x-b.x,p.y-b.y)<p.r+b.r){hit=p;break;}}
-      if(hit){hit.hp-=b.damage;hit.hurt=.13;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.22));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:1.65,max:1.65});if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
+      if(hit){hit.hp-=b.damage;hit.hurt=.13;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.75));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:1.65,max:1.65});if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
       return true;
     });
     particles=particles.filter(function(p){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);p.life-=dt;return p.life>0;});floatingTexts=floatingTexts.filter(function(t){t.y-=34*dt;t.life-=dt;return t.life>0;});
@@ -231,6 +231,45 @@
     if(p.siphonFlash>0){ctx.globalAlpha=p.siphonFlash/.7;ctx.strokeStyle="#83ff9a";ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(0,2,31+p.siphonFlash*12,29+p.siphonFlash*12,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
     ctx.restore();
   }
+  function drawFoodWeapon(p){
+    // Weapons sit in front of the fighter and point in the exact direction of its shots.
+    // Each silhouette matches the projectile pattern of that food fighter.
+    var color=foods[p.fighter].color;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+    ctx.lineCap="round";ctx.lineJoin="round";
+    // Rear grip and stock, visible against the fighter's body.
+    ctx.fillStyle="#493326";ctx.strokeStyle="#30251f";ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.roundRect(-12,-7,19,14,4);ctx.fill();ctx.stroke();
+    if(p.fighter===0){
+      // Pancake repeater: twin syrup barrels for its rapid single shots.
+      ctx.fillStyle="#9a5b2c";ctx.beginPath();ctx.roundRect(-1,-10,29,20,6);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#f4c765";ctx.beginPath();ctx.roundRect(5,-8,26,6,3);ctx.roundRect(5,2,26,6,3);ctx.fill();
+      ctx.fillStyle="#6b3d25";ctx.fillRect(27,-9,5,18);
+      ctx.fillStyle="#fff0b0";ctx.beginPath();ctx.arc(12,0,3,0,Math.PI*2);ctx.fill();
+    }else if(p.fighter===1){
+      // Wrap launcher: a chunky vegetable launcher with a green muzzle.
+      ctx.fillStyle="#e7c987";ctx.beginPath();ctx.roundRect(-1,-12,30,24,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#4f914b";ctx.beginPath();ctx.roundRect(20,-10,13,20,5);ctx.fill();
+      ctx.fillStyle="#e64e43";ctx.beginPath();ctx.arc(27,-3,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#fff0bd";ctx.fillRect(3,-4,14,8);
+    }else if(p.fighter===2){
+      // Pasta scatter cannon: a wide five-port muzzle for its five-piece spread.
+      ctx.fillStyle="#a85e35";ctx.beginPath();ctx.roundRect(-1,-13,27,26,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#f4d79e";ctx.beginPath();ctx.roundRect(17,-15,17,30,5);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#70432b";
+      [-9,-4,0,4,9].forEach(function(y){ctx.beginPath();ctx.arc(30,y,2.1,0,Math.PI*2);ctx.fill();});
+      ctx.fillStyle="#e5a14c";ctx.fillRect(3,-7,13,14);
+    }else{
+      // Crouton double-barrel blaster: two visible bread-gold barrels for paired shots.
+      ctx.fillStyle="#8a512b";ctx.beginPath();ctx.roundRect(-1,-12,29,24,6);ctx.fill();ctx.stroke();
+      ctx.fillStyle="#e9b665";ctx.beginPath();ctx.roundRect(7,-12,25,8,3);ctx.roundRect(7,4,25,8,3);ctx.fill();
+      ctx.fillStyle="#5a3925";ctx.fillRect(27,-13,6,10);ctx.fillRect(27,3,6,10);
+      ctx.fillStyle="#fff0bd";ctx.fillRect(3,-3,12,6);
+    }
+    // Tiny muzzle glint makes the barrel direction obvious even while idle.
+    ctx.fillStyle="#fff4c7";ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(34,0,2.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
   function drawAimGuide(){
     if(!me||!me.alive)return;
     var f=foods[me.fighter],a=me.angle,range=f.range,half=f.spread*(f.count-1)/2;
@@ -273,7 +312,7 @@
       }
     });
     bullets.forEach(function(b){ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
-    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
+    players.forEach(function(p){if(!p.alive)return;drawFoodHero(p,performance.now());drawFoodWeapon(p);ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);});
     drawAimGuide();
     particles.forEach(function(p){ctx.globalAlpha=clamp(p.life*2,0,1);ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.r?8:0;ctx.beginPath();ctx.arc(p.x,p.y,p.r||4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1;});floatingTexts.forEach(function(t){ctx.globalAlpha=clamp(t.life/t.max,0,1);ctx.font="900 19px system-ui";ctx.textAlign="center";ctx.lineWidth=4;ctx.strokeStyle="rgba(35,53,35,.8)";ctx.strokeText(t.text,t.x,t.y);ctx.fillStyle=t.color;ctx.fillText(t.text,t.x,t.y);ctx.globalAlpha=1;});ctx.restore();
   }
