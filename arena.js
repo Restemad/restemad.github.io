@@ -76,14 +76,14 @@
   }
   function spawn(i,isHuman){
     var f=foods[i],p=freeSpot(isHuman?null:me);
-    return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:f.hp,maxHp:f.hp,fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:f.damage,rate:f.rate,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
+    return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
     mode=which; players=[];bullets=[];particles=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780}; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
-      var food=foods[f];players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:food.hp,maxHp:food.hp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage,rate:food.rate,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0});
+      var food=foods[f],botHp=Math.round(food.hp*1.35);players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:botHp,maxHp:botHp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage*.85,rate:food.rate*1.25,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0});
     }
     root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
     root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
@@ -259,13 +259,12 @@
     var color=foods[p.fighter].color;
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
     ctx.lineCap="round";ctx.lineJoin="round";
-    var kick=clamp((p.recoil||0)/.16,0,1),armX=22-kick*5,armY=1+kick*3;
-    // Long arm is drawn over the body so the shoulder-to-grip connection is unmistakable.
-    ctx.strokeStyle="rgba(49,35,27,.98)";ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(3,12);ctx.quadraticCurveTo(12,8,armX,armY);ctx.stroke();
-    ctx.strokeStyle=foods[p.fighter].color;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(3,11);ctx.quadraticCurveTo(12,7,armX,armY);ctx.stroke();
-    ctx.strokeStyle="#d39a69";ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(14,5);ctx.lineTo(armX,armY);ctx.stroke();
-    // The grip is placed beyond the fighter's outline, directly under the hand.
-    ctx.translate(22-kick*5,0);
+    var kick=clamp((p.recoil||0)/.16,0,1),armX=28-kick*7,armY=kick*4;
+    // One connected front arm: shoulder -> sleeve -> forearm -> hand.
+    ctx.strokeStyle="rgba(49,35,27,.98)";ctx.lineWidth=17;ctx.beginPath();ctx.moveTo(11,5);ctx.quadraticCurveTo(20,5,armX,armY);ctx.stroke();
+    ctx.strokeStyle=foods[p.fighter].color;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(11,4);ctx.quadraticCurveTo(20,4,armX,armY);ctx.stroke();
+    ctx.strokeStyle="#d39a69";ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(20,2);ctx.lineTo(armX,armY);ctx.stroke();
+    ctx.translate(28-kick*7,0);
     ctx.fillStyle="#493326";ctx.strokeStyle="#30251f";ctx.lineWidth=2.5;
     ctx.beginPath();ctx.roundRect(-12,-7,19,14,4);ctx.fill();ctx.stroke();
     if(p.fighter===0){
