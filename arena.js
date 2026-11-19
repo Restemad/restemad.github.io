@@ -278,7 +278,8 @@
       // Prevent duplicates on the same edge/cell without blocking adjacent builds.
       if(obstacles.some(function(v){return v.built&&v.buildType===type&&v.x===x&&v.y===y&&v.w===w&&v.h===h;}))return;
     }else{
-      var dims=vertical?[22,110]:[110,22];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
+      // Aim-aligned walls: up/down = tall, left/right = wide.
+      var dims=vertical?[110,22]:[22,110];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
     }
     var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:95,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
     if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
@@ -286,6 +287,21 @@
     obstacles.push(o);lastBuildAt=performance.now();buildCooldownUntil=performance.now()+(freebuild()?0:2600);
     if(freebuild()&&obstacles.length>400){var old=obstacles.filter(function(v){return !v.built;}),built=obstacles.filter(function(v){return v.built;});obstacles=old.concat(built.slice(-300));}
     ring(x+w/2,y+h/2,"#b8f0ff",30);
+  }
+  function botBuildWall(bot,enemy){
+    if(!bot||!bot.alive||!enemy||!enemy.alive||freebuild()||net)return false;
+    var now=performance.now();
+    if(now<(bot.nextWallAt||0))return false;
+    bot.nextWallAt=now+rand(4200,8500);
+    var a=Math.atan2(enemy.y-bot.y,enemy.x-bot.x);
+    var x=bot.x+Math.cos(a)*75,y=bot.y+Math.sin(a)*75;
+    var tall=Math.abs(Math.cos(a))>.707,w=tall?22:110,h=tall?110:22;
+    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:95,expires:now+11000,edited:false};
+    if(o.x<25||o.y<25||o.x+o.w>WORLD_W-25||o.y+o.h>WORLD_H-25)return false;
+    if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+o.w+6&&v.x+v.w>o.x-6&&v.y<o.y+o.h+6&&v.y+v.h>o.y-6}))return false;
+    if(players.some(function(v){return v.alive&&obstacleHit(o,v.x,v.y,(v.r||18)+5)}))return false;
+    obstacles.push(o);ring(x,y,"#b8f0ff",30);
+    return true;
   }
   function editBuild(){
     if(!freebuild()||!running||!me||!me.alive)return;
@@ -448,6 +464,7 @@
           (p.hp<p.maxHp*.65||dist(p,t)>420);
         if(t){
           var a=Math.atan2(t.y-p.y,t.x-p.x),d=dist(p,t),visible=clearShot(p,t);p.angle=a;
+          if(d<470&&d>95&&Math.random()<dt*(endgame?.30:.13))botBuildWall(p,t);
           var strafe=Math.sin(elapsed*1.8+p.x*.018)*.62;
           var mx=0,my=0;
           bullets.forEach(function(b){if(b.owner===p||!b.owner.alive)return;var bx=p.x-b.x,by=p.y-b.y,bd=Math.hypot(bx,by);var closing=b.vx*bx+b.vy*by<0;if(bd<125&&closing){mx+=bx/Math.max(1,bd)*1.25;my+=by/Math.max(1,bd)*1.25;}});
