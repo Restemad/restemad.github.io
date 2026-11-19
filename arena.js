@@ -8,7 +8,7 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
-  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netDebug=null, netSequence=0;
+  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netDebug=null, netSequence=0, netLastDraw=0;
   function onlineStatus(){
     if(!net||!netDebug)return;
     var now=performance.now(), remote=players.filter(function(p){return p.netId!==net.userId;});
@@ -675,23 +675,28 @@
   // One unified scoreboard: minimap, match stats and elimination feed.
   function drawSuperHud(){
     if(!running||!me||!me.alive)return;
-    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-110,w=188;
-    ctx.save();ctx.fillStyle="rgba(24,41,32,.86)";ctx.beginPath();ctx.roundRect(x,y,w,78,12);ctx.fill();
-    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.textAlign="left";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+17);
-    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+27,w-24,9,5);ctx.fill();
-    ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+27,(w-24)*charge/100,9,5);ctx.fill();
+    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-147,w=188;
+    ctx.save();ctx.fillStyle="rgba(24,41,32,.9)";ctx.beginPath();ctx.roundRect(x,y,w,115,12);ctx.fill();
+    var hp=Math.max(0,Math.ceil(me.hp||0)),maxHp=Math.max(1,Math.ceil(me.maxHp||1));
+    ctx.fillStyle="#fff";ctx.font="800 13px system-ui";ctx.textAlign="left";ctx.fillText("LIV "+hp+" / "+maxHp,x+12,y+18);
+    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+25,w-24,12,5);ctx.fill();
+    ctx.fillStyle=hp/maxHp>.55?"#69e67d":hp/maxHp>.25?"#ffd45c":"#ff6262";
+    ctx.beginPath();ctx.roundRect(x+12,y+25,(w-24)*clamp(hp/maxHp,0,1),12,5);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+53);
+    ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+63,w-24,9,5);ctx.fill();
+    ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+63,(w-24)*charge/100,9,5);ctx.fill();
     // Fast-filling ammo indicators: weaker fighters have larger magazines.
     var cap=ammoCapacity(me),ammo=me.ammo===undefined?cap:me.ammo;
     ctx.fillStyle="#fff";ctx.font="800 12px system-ui";
-    ctx.fillText("SKUD "+ammo+"/"+cap,x+12,y+63);
+    ctx.fillText("SKUD "+ammo+"/"+cap,x+12,y+99);
     var gap=3,slotWidth=(w-98-(cap-1)*gap)/cap;
     for(var slot=0;slot<cap;slot++){
       var sx=x+86+slot*(slotWidth+gap),filled=slot<ammo;
       ctx.fillStyle=filled?"#ffe084":"#374a3c";
-      ctx.beginPath();ctx.roundRect(sx,y+53,slotWidth,12,3);ctx.fill();
+      ctx.beginPath();ctx.roundRect(sx,y+89,slotWidth,12,3);ctx.fill();
       if(!filled&&slot===ammo){
         ctx.fillStyle="#d7a64d";ctx.beginPath();
-        ctx.roundRect(sx,y+53,slotWidth*clamp((me.reloadClock||0)/ammoReload(me),0,1),12,3);ctx.fill();
+        ctx.roundRect(sx,y+89,slotWidth*clamp((me.reloadClock||0)/ammoReload(me),0,1),12,3);ctx.fill();
       }
     }
     ctx.restore();
@@ -777,14 +782,17 @@
       }
     }else if(net&&!net.host){
       elapsed+=dt;
-      if(now-netLastInput>45){netLastInput=now;sendNetInput();}
+      if(now-netLastInput>90){netLastInput=now;sendNetInput();}
       if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Ingen kampdata fra værten. I spiller ikke synkroniseret.";
     }else{
       update(dt);
-      if(net&&net.host&&now-netLastSend>85){netLastSend=now;sendNetSnapshot(false);}
+      if(net&&net.host&&now-netLastSend>120){netLastSend=now;sendNetSnapshot(false);}
     }
     if(net)onlineStatus();
-    draw();if(running)raf=requestAnimationFrame(loop);
+    // The guest draws at 40 FPS instead of redrawing the whole large map at 60+ FPS.
+    // Network input and snapshots continue independently of the rendering limit.
+    if(!net||net.host||now-netLastDraw>=25){netLastDraw=now;draw();}
+    if(running)raf=requestAnimationFrame(loop);
   }
   function sendNetInput(){
     if(!net||net.host||!me||!me.alive)return;
@@ -799,7 +807,7 @@
     if(!net||!net.host)return;
     net.channel.send({type:"broadcast",event:"state",payload:{
       players:players.map(function(p){return {id:p.netId,x:p.x,y:p.y,hp:p.hp,alive:p.alive,angle:p.angle,ammo:p.ammo,superCharge:p.superCharge,shield:p.shield,kills:p.kills,walking:p.walking,muzzleFlash:p.muzzleFlash,hurt:p.hurt};}),
-      bullets:bullets.map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
+      bullets:bullets.slice(-90).map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
       zone:zone,elapsed:elapsed,stormStage:stormStage,stormTime:stormTime,done:!!done,winner:players.find(function(p){return p.alive;})?.netId||null
     }});
   }
@@ -820,7 +828,7 @@
   function startOnline(cfg){
     if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
     audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};
-    netInputs=Object.create(null);netInputAt=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=0;netSequence=0;
+    netInputs=Object.create(null);netInputAt=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=0;netSequence=0;netLastDraw=0;
     players=[];me=null;bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     // All clients generate the exact same map from the room ID.
     var seed=0,seedText=String(cfg.seed||"restemad");
