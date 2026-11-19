@@ -6,7 +6,7 @@
   var root=document.getElementById("arenaGame");
   if(!root)return;
   var el=function(id){return root.querySelector("#"+id);};
-  var client=null, room=null, host=false, timer=null, busy=false;
+  var client=null, room=null, host=false, timer=null, busy=false, channel=null, launched=false;
   function message(t){el("arenaOnlineMessage").textContent=t;}
   function error(e){message("⚠️ "+(e&&e.message?e.message:"Der opstod en fejl. Prøv igen."));}
   function setup(){
@@ -29,7 +29,7 @@
     return n;
   }
   function fighter(){
-    var active=root.querySelector(".arena-fighter.active, .arena-fighter.selected, [data-fighter].active");
+    var active=root.querySelector(".arena-fighter.chosen");
     var index=active?Number(active.dataset.fighter):0;
     return Number.isInteger(index)&&index>=0&&index<=3?index:0;
   }
@@ -60,9 +60,11 @@
     var waiting=r.data.status==="waiting";
     el("arenaRoomStart").hidden=!host||!waiting;
     el("arenaRoomStart").disabled=people.length<2;
-    el("arenaRoomStatus").textContent=waiting?(people.length<2?"Venter på mindst 2 spillere…":host?"I er klar! Værten kan starte.":"Venter på, at værten starter."):"Kampen er startet! Onlinekampens styring og synkronisering er ikke bygget endnu.";
+    if(!waiting&&!launched&&people.length>=2)launch(r.data,people).catch(error);
+    el("arenaRoomStatus").textContent=waiting?(people.length<2?"Venter på mindst 2 spillere…":host?"I er klar! Værten kan starte.":"Venter på, at værten starter."):"Kampen er startet! Forbinder til onlinekampen…";
   }
   function showRoom(code){
+    if(channel){setup().removeChannel(channel);channel=null;}launched=false;
     room=code;el("arenaRoomCurrentCode").textContent=code;el("arenaRoomLobby").hidden=false;
     el("arenaRoomStart").hidden=true;
     if(timer)clearInterval(timer);
@@ -99,8 +101,34 @@
     var r=await setup().rpc("arena_start_room",{p_code:room});
     if(r.error)throw r.error;
     await refresh();
-    message("Lobbyen er startet. Onlinekampen kommer i næste trin.");
+    message("Starter onlinekampen…");
   });});
+  async function launch(data,people){
+    if(launched)return;launched=true;
+    try{
+      var uid=await login(),isHost=uid===data.host_id,game=window.RESTEMAD_ONLINE_GAME;
+      if(!game)throw Error("Online-spilmotoren blev ikke indlæst.");
+      var ch=setup().channel("arena-match-"+data.id,{config:{broadcast:{self:false}}});
+      channel=ch;var started=false;
+      ch.on("broadcast",{event:"input"},function(e){if(isHost&&e.payload)game.input(e.payload.userId,e.payload.input);});
+      ch.on("broadcast",{event:"state"},function(e){if(!isHost&&started)game.receive(e.payload);});
+      ch.on("broadcast",{event:"init"},function(e){
+        if(isHost||started||!e.payload)return;started=true;
+        game.start({host:false,userId:uid,channel:ch,roster:e.payload.roster,obstacles:e.payload.obstacles});
+        message("");
+      });
+      await new Promise(function(resolve,reject){
+        var t=setTimeout(function(){reject(Error("Realtime-forbindelsen blev ikke oprettet."));},12000);
+        ch.subscribe(function(status){if(status==="SUBSCRIBED"){clearTimeout(t);resolve();}else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(t);reject(Error("Realtime-forbindelsen fejlede."));}});
+      });
+      if(isHost){
+        started=true;game.start({host:true,userId:uid,channel:ch,roster:people});
+        var init={roster:people,obstacles:game.map()},sent=0;
+        var intro=setInterval(function(){if(!started||sent++>25){clearInterval(intro);return;}ch.send({type:"broadcast",event:"init",payload:init});},500);
+        ch.send({type:"broadcast",event:"init",payload:init});
+      }else message("Venter på kampdata fra værten…");
+    }catch(e){launched=false;throw e;}
+  }
   el("arenaRoomCopy").addEventListener("click",function(){
     if(room&&navigator.clipboard)navigator.clipboard.writeText(room).then(function(){message("Rumkoden er kopieret!");}).catch(function(){message("Kopiér koden ovenfor.");});
   });
