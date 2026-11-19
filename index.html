@@ -20,6 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="arena.css">
 </head>
 <body>
   <noscript><style>#loader{display:none!important}.reveal,.hero-text>*,.hero-art{opacity:1!important;transform:none!important;animation:none!important}</style><p style="padding:16px;background:#D9A86C;color:#26342B;text-align:center">Siden virker bedst med JavaScript slået til.</p></noscript>
@@ -36,7 +37,7 @@
         <a href="#/s/opskrifter">Find opskrifter</a>
         <a href="#/s/madspild">Om madspild</a>
         <a href="#/s/tips">Tips</a>
-        <a href="#/s/quiz">Quiz</a>
+        <a href="#/s/quiz">Arena</a>
         <a href="#/s/om-os">Om os</a>
         <a href="#/s/opskrifter" class="btn btn-accent nav-cta">Find inspiration</a>
       </nav>
@@ -141,11 +142,26 @@
       </section>
 
       <section class="section" id="quiz">
-        <div class="wrap">
-          <div class="section-head reveal"><h2>Madspild-quiz</h2><p>8 hurtige spørgsmål. Hvor meget ved du om at undgå madspild?</p></div>
-          <div class="quiz reveal" id="quizBox" aria-live="polite"></div>
-        </div>
-      </section>
+  <div class="wrap">
+    <div class="section-head reveal"><h2>RESTEMAD ARENA</h2><p>Vælg din madhelt, kæmp mod ni modstandere, og bliv den sidste tilbage!</p></div>
+    <div id="arenaGame" class="reveal">
+      <div class="arena-shell" id="arenaMenu">
+        <div class="arena-topline"><span class="arena-kicker">♻️ MADSPILD MØDER ARENA</span><span class="arena-muted">PC · iPad · Mobil</span></div>
+        <h3>Vælg din fighter</h3><p class="arena-muted">Hver madhelt har sin egen fart, styrke og angrebsstil.</p>
+        <div class="arena-fighters" id="arenaFighters"></div><p class="arena-description" id="arenaFighterDesc"></p>
+        <div class="arena-actions"><button class="btn btn-primary" type="button" id="arenaStart">⚔️ Solo Showdown</button><button class="btn btn-ghost" type="button" id="arenaPractice">🎯 Træning</button><button class="btn btn-ghost" type="button" id="arenaOnline">🌐 Onlinekamp</button></div>
+        <p class="arena-muted" style="margin-top:12px">Solo Showdown: 10 deltagere – dig mod 9 bots. Træning: øv dig mod 9 bots.</p>
+        <div class="arena-online-info" id="arenaOnlineInfo" hidden><b>Onlinekamp kræver en gratis multiplayer-server.</b><p>Spillet kører lokalt mod bots. Rigtige spillere, fælles trofæer og online-rangliste kræver en Supabase-database. Online er endnu ikke aktiveret.</p><button class="btn btn-ghost" type="button" id="arenaOnlineClose">Luk</button></div>
+        <div class="arena-board"><h3>🏆 Din rangliste</h3><div class="arena-stats"><div class="arena-stat"><b data-stat="wins">0</b><span>Sejre</span></div><div class="arena-stat"><b data-stat="eliminations">0</b><span>Elimineringer</span></div><div class="arena-stat"><b data-stat="trophies">0</b><span>Trofæer</span></div><div class="arena-stat"><b data-stat="games">0</b><span>Kampe</span></div></div><div id="arenaLocalBoard"></div><p class="arena-muted" style="margin-top:8px">Statistik gemmes på denne enhed og deles endnu ikke med andre.</p></div>
+      </div>
+      <div id="arenaHud" hidden><div class="arena-hud"><span id="arenaModeLabel">SOLO SHOWDOWN</span><span>Tilbage: <strong id="arenaAlive">10</strong></span><span>Elimineringer: <strong id="arenaKills">0</strong></span><span>Tid: <strong id="arenaClock">0:00</strong></span><button class="btn btn-ghost" type="button" id="arenaExit" style="min-height:38px;padding:6px 14px">Forlad</button><span class="arena-hint" id="arenaHint"></span></div></div>
+      <div class="arena-canvas-wrap" id="arenaCanvasWrap"><canvas id="arenaCanvas" width="960" height="600" aria-label="Spillebane med madhelte"></canvas>
+        <div class="arena-touch" id="arenaTouch" hidden><div class="arena-stick" id="arenaMoveStick" aria-label="Joystick til bevægelse"></div><div style="display:flex;align-items:end;gap:12px"><div class="arena-stick" id="arenaAimStick" aria-label="Joystick til sigte"></div><button class="arena-fire" id="arenaFire" type="button">SKUD</button></div></div>
+        <div class="arena-result" id="arenaResult" hidden><div class="arena-result-card"><h3 id="arenaResultTitle">Du vandt!</h3><p id="arenaResultText"></p><p id="arenaResultStats"></p><div class="arena-actions"><button class="btn btn-primary" id="arenaRestart" type="button">Spil igen</button><button class="btn btn-ghost" id="arenaExitResult" type="button">Menu</button></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
 
       <section class="section alt" id="om-os">
         <div class="wrap narrow center reveal">
@@ -180,5 +196,6 @@
   <script src="data.js" defer></script>
   <script src="script.js" defer></script>
   <script src="extras.js" defer></script>
+  <script src="arena.js" defer></script>
 </body>
 </html>
