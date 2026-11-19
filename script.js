@@ -162,6 +162,16 @@
       renderRecipes();
       window.scrollTo(0, 0);
     }
+    // Replay entrance animations whenever the visitor returns to the homepage.
+    if (!$("#view-home").hidden) {
+      if (io) io.disconnect();
+      $("#view-home .reveal.in").forEach(function (el) { el.classList.remove("in"); });
+      $("#view-home .hero-text > *, #view-home .hero-art").forEach(function (el) {
+        el.style.animation = "none";
+        void el.offsetWidth;
+        el.style.animation = "";
+      });
+    }
     observeReveals();
   }
 
