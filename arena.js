@@ -342,7 +342,7 @@
       }else if(p.human){
         if(superPressed){useSuper(p);superPressed=false;}
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
-        if(touchDash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
+        if(touchDash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}touchDash=false;
         var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
         var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
         if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
@@ -363,7 +363,9 @@
             }
             p.angle=best===null?rawAngle:rawAngle+Math.atan2(Math.sin(best-rawAngle),Math.cos(best-rawAngle))*.65;
           }
-          if(touchFire&&touchAutoAim)p.angle=autoAimAngle(p);\n          if(touchReleaseShot||touchFire)shoot(p,p.angle);\n          touchReleaseShot=false;
+          if(touchFire&&touchAutoAim)p.angle=autoAimAngle(p);
+          if(touchReleaseShot||touchFire)shoot(p,p.angle);
+          touchReleaseShot=false;
         }else{
           p.angle=Math.atan2(pointer.y/ZOOM+camera.y-p.y,pointer.x/ZOOM+camera.x-p.x);
           if(pointer.down||keys[" "])shoot(p,p.angle);
@@ -855,6 +857,7 @@
     if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
     var angle=isTouch()?(touchFire&&touchAutoAim?autoAimAngle(me):touchAim.active||touchReleaseShot?Math.atan2(touchAim.y,touchAim.x):me.angle):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
     net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?(touchReleaseShot||touchFire):(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
+    touchDash=false;
     superPressed=false;
   }
   function sendNetSnapshot(done){
@@ -941,7 +944,8 @@
     ctx.setTransform(canvas.width/W,0,0,canvas.height/H,0,0);
     draw();
   }
-  var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchFire=false,touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false;\n  function autoAimAngle(p){var best=null,near=Infinity;for(var i=0;i<players.length;i++){var enemy=players[i];if(enemy===p||!enemy.alive||enemy.team===p.team||!canSee(p,enemy)||!clearShot(p,enemy))continue;var d=dist(p,enemy);if(d<p.range+25&&d<near){near=d;best=enemy;}}return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;}
+  var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchFire=false,touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false;
+  function autoAimAngle(p){var best=null,near=Infinity;for(var i=0;i<players.length;i++){var enemy=players[i];if(enemy===p||!enemy.alive||enemy.team===p.team||!canSee(p,enemy)||!clearShot(p,enemy))continue;var d=dist(p,enemy);if(d<p.range+25&&d<near){near=d;best=enemy;}}return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;}
   function joystick(el,kind){
     var active=false,id=null,center=null;
     el.addEventListener("pointerdown",function(e){e.preventDefault();active=true;id=e.pointerId;var r=el.getBoundingClientRect();center={x:r.left+r.width/2,y:r.top+r.height/2};el.setPointerCapture(id);});
@@ -953,11 +957,29 @@
     el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
   }
   joystick(root.querySelector("#arenaMoveStick"),"move");joystick(root.querySelector("#arenaAimStick"),"aim");
-  root.querySelector("#arenaSuper").addEventListener("pointerdown",function(e){e.preventDefault();superPressed=true;});
-  root.querySelector("#arenaDash").addEventListener("pointerdown",function(e){e.preventDefault();touchDash=true;});
-  ["pointerup","pointercancel","pointerleave"].forEach(function(n){root.querySelector("#arenaDash").addEventListener(n,function(){touchDash=false;});});
-  root.querySelector("#arenaFire").addEventListener("pointerdown",function(e){e.preventDefault();touchFire=true;touchAutoAim=true;});
-  ["pointerup","pointercancel","pointerleave"].forEach(function(n){root.querySelector("#arenaFire").addEventListener(n,function(){touchFire=false;touchAutoAim=false;});});
+  // One tap = one action. Keep touch inputs independent so sliding off a button
+  // or lifting a different finger cannot cancel the action accidentally.
+  function bindTapAction(el,activate){
+    el.addEventListener("pointerdown",function(e){
+      e.preventDefault();e.stopPropagation();
+      activate();el.classList.add("pressed");
+      if(el.setPointerCapture)try{el.setPointerCapture(e.pointerId);}catch(err){}
+    });
+    ["pointerup","pointercancel","lostpointercapture"].forEach(function(type){
+      el.addEventListener(type,function(){el.classList.remove("pressed");});
+    });
+  }
+  bindTapAction(root.querySelector("#arenaSuper"),function(){superPressed=true;});
+  bindTapAction(root.querySelector("#arenaDash"),function(){touchDash=true;});
+  var fireButton=root.querySelector("#arenaFire");
+  fireButton.addEventListener("pointerdown",function(e){
+    e.preventDefault();e.stopPropagation();touchFire=true;touchAutoAim=true;
+    fireButton.classList.add("pressed");
+    if(fireButton.setPointerCapture)try{fireButton.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  ["pointerup","pointercancel","lostpointercapture"].forEach(function(type){
+    fireButton.addEventListener(type,function(){touchFire=false;touchAutoAim=false;fireButton.classList.remove("pressed");});
+  });
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
   root.querySelector("#arenaPractice").addEventListener("click",function(){startGame("practice");});
