@@ -142,6 +142,7 @@
           if(d>285){mx=Math.cos(a);my=Math.sin(a);}else if(d<205){mx=-Math.cos(a);my=-Math.sin(a);}
           if(!visible){var side=(Math.sin(elapsed+p.y*.01)>0?1:-1);mx+=-Math.sin(a)*side*.85;my+=Math.cos(a)*side*.85;}
           else {mx-=Math.sin(a)*strafe;my+=Math.cos(a)*strafe;}
+          p.walking=Math.hypot(mx,my)>.08;
           movePlayer(p,mx,my,dt);
           if(visible&&d<p.range*.9&&Math.random()<.58)shoot(p,a+rand(-.045,.045),t);
         }
