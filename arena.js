@@ -944,7 +944,20 @@
     draw();
   }
   var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false,touchShotAngle=null,touchAutoBurstUntil=0,touchLastTap=0;
-  function autoAimAngle(p){var best=null,near=Infinity;for(var i=0;i<players.length;i++){var enemy=players[i];if(enemy===p||!enemy.alive||enemy.team===p.team||!canSee(p,enemy)||!clearShot(p,enemy))continue;var d=dist(p,enemy);if(d<p.range+25&&d<near){near=d;best=enemy;}}return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;}
+  function autoAimAngle(p){
+    // Prior version rejected enemies beyond weapon range, behind cover or in
+    // bushes, then silently fired at the old facing angle (often downwards).
+    // Prefer a clear target, but ALWAYS aim toward an actual enemy if one exists.
+    var best=null,bestScore=Infinity;
+    for(var i=0;i<players.length;i++){
+      var enemy=players[i];
+      if(enemy===p||!enemy.alive||(p.team!=null&&enemy.team===p.team))continue;
+      var d=dist(p,enemy);
+      var score=d+(canSee(p,enemy)?0:220)+(clearShot(p,enemy)?0:160);
+      if(score<bestScore){bestScore=score;best=enemy;}
+    }
+    return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;
+  }
   function joystick(el,kind){
     var active=false,id=null,center=null,dragged=false;
     function update(e){
@@ -968,7 +981,7 @@
       if(kind==="move"){touchMove={x:0,y:0};return;}
       if(e.type==="pointerup"){
         touchAutoAim=!dragged;touchShotAngle=dragged?Math.atan2(touchAim.y,touchAim.x):null;touchReleaseShot=true;
-        if(!dragged){var now=performance.now();if(now-touchLastTap<340){touchAutoBurstUntil=now+850;touchLastTap=0;}else touchLastTap=now;}
+        if(!dragged){var now=performance.now();if(now-touchLastTap<420){touchAutoBurstUntil=now+1250;touchLastTap=0;}else touchLastTap=now;}
         else{touchLastTap=0;touchAutoBurstUntil=0;}
       }
       touchAim.active=false;
