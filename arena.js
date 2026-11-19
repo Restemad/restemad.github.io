@@ -34,7 +34,7 @@
   function sound(kind){
     if(kind==="shot"){var ac=audioReady();if(!ac||ac.currentTime-lastShotSfx<.075)return;lastShotSfx=ac.currentTime;tone(360,.085,"triangle",.023,0,125);}
     else if(kind==="hit")tone(210,.10,"square",.025,0,90);
-    else if(kind==="super"){tone(440,.13,"triangle",.06,0,660);tone(660,.18,"sine",.06,.13,990);}
+    else if(kind==="super"){tone(180,.28,"sawtooth",.045,0,65);tone(440,.16,"triangle",.065,0,880);tone(660,.26,"sine",.07,.13,1320);tone(990,.34,"triangle",.06,.3,1568);}
     else if(kind==="kill"){tone(420,.11,"triangle",.05);tone(630,.13,"triangle",.055,.10);tone(840,.23,"sine",.07,.22);}
     else if(kind==="win"){
       // New celebratory four-chord fanfare, not Fortnite's recorded victory cue.
@@ -176,29 +176,35 @@
     if(particles.length>260)particles.splice(0,particles.length-260);
   }
   function ring(x,y,color,radius){effects.push({x:x,y:y,color:color,life:.42,max:.42,r:radius});if(effects.length>35)effects.shift();}
+  function superProjectile(p,a,speed,damage,range,r,color,trail){
+    bullets.push({x:p.x+Math.cos(a)*29,y:p.y+Math.sin(a)*29,vx:Math.cos(a)*speed,vy:Math.sin(a)*speed,owner:p,damage:damage,life:range/speed,r:r,color:color,superTrail:trail||color});
+  }
   function useSuper(p){
     if(!p||!p.alive||(p.superCharge||0)<100)return false;
-    p.superCharge=0;p.superFlash=.8;if(p.human){sound("super");screenShake=Math.max(screenShake,9);}ring(p.x,p.y,"#ffe27b",68);burst(p.x,p.y,"#ffe27b",24,175);
+    p.superCharge=0;p.superFlash=1.05;p.revealed=1.5;
+    if(p.human){sound("super");screenShake=Math.max(screenShake,12);}
+    ring(p.x,p.y,"#ffffff",115);ring(p.x,p.y,"#ffe27b",85);burst(p.x,p.y,"#ffe27b",34,230);
     if(p.fighter===0){
-      // Pancake: powerful fan of 11 fast projectiles.
-      for(var i=-5;i<=5;i++){var a=p.angle+i*.105;
-        bullets.push({x:p.x+Math.cos(a)*26,y:p.y+Math.sin(a)*26,vx:Math.cos(a)*610,vy:Math.sin(a)*610,owner:p,damage:18,life:490/610,r:7,color:"#ffe37a"});
-      }
+      // GOLDEN PANCAKE STORM: dense, staggered golden fan with a heavy center beam.
+      for(var i=-7;i<=7;i++)superProjectile(p,p.angle+i*.087,650,17,550,7,i%2?"#ffd64f":"#fff5a8","#ffdf60");
+      superProjectile(p,p.angle,740,38,630,13,"#fff7bc","#ffe46b");
+      ring(p.x+Math.cos(p.angle)*100,p.y+Math.sin(p.angle)*100,"#ffdd58",90);
     }else if(p.fighter===1){
-      // Wrap: temporary damage-absorbing shield.
-      p.shield=65;p.shieldTime=5;
+      // EMERALD FORTRESS: massive shield plus a short-range defensive shockwave.
+      p.shield=125;p.shieldTime=6;
+      for(var j=0;j<12;j++){var a=j*Math.PI*2/12;superProjectile(p,a,340,13,170,9,"#8df6ad","#65e6b1");}
+      ring(p.x,p.y,"#7bffd7",145);burst(p.x,p.y,"#8bffc0",24,170);
     }else if(p.fighter===2){
-      // Pasta: circular burst, useful against surrounding enemies.
-      for(var j=0;j<18;j++){var a=j*Math.PI*2/18;
-        bullets.push({x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*420,vy:Math.sin(a)*420,owner:p,damage:17,life:350/420,r:7,color:"#ffae75"});
-      }
+      // PASTA TORNADO: two offset radial waves and a close-range core blast.
+      for(var k=0;k<24;k++){var a=k*Math.PI*2/24;superProjectile(p,a,440,17,420,7,"#ffb56b","#ff8d59");}
+      for(var m=0;m<16;m++){var a=m*Math.PI*2/16+Math.PI/16;superProjectile(p,a,310,12,310,8,"#fff1a5","#ffbd70");}
+      ring(p.x,p.y,"#ff9b56",165);
     }else{
-      // Croutons: forward piercing-like heavy burst (several large projectiles).
-      for(var k=-2;k<=2;k++){var a=p.angle+k*.12;
-        bullets.push({x:p.x+Math.cos(a)*25,y:p.y+Math.sin(a)*25,vx:Math.cos(a)*540,vy:Math.sin(a)*540,owner:p,damage:34,life:440/540,r:9,color:"#ffdf94"});
-      }
+      // CRUNCH CANNON: massive central shot with a focused five-shot spread.
+      for(var n=-3;n<=3;n++)superProjectile(p,p.angle+n*.095,590,n===0?48:28,550,n===0?16:10,"#ffe1a0","#ffba52");
+      ring(p.x+Math.cos(p.angle)*110,p.y+Math.sin(p.angle)*110,"#fff1a6",105);
     }
-    for(var q=0;q<16;q++){var a=q*Math.PI*2/16;particles.push({x:p.x,y:p.y,vx:Math.cos(a)*130,vy:Math.sin(a)*130,life:.5,color:"#ffe37a",r:4});}
+    floatingTexts.push({x:p.x,y:p.y-70,text:["PANDEKAGE STORM!","GRØNT SKJOLD!","PASTA TORNADO!","CRUNCH CANNON!"][p.fighter],color:"#fff0a6",life:1.2,max:1.2});
     return true;
   }
   function applyDamage(target,amount,attacker){
@@ -363,6 +369,7 @@
     });
     bullets=bullets.filter(function(b){
       b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+      if(b.superTrail&&Math.random()<.45){particles.push({x:b.x,y:b.y,vx:rand(-35,35),vy:rand(-35,35),life:rand(.12,.25),color:b.superTrail,r:rand(2,5)});if(particles.length>260)particles.splice(0,particles.length-260);}
       var wall=obstacles.some(function(o){return obstacleHit(o,b.x,b.y,b.r);});
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
@@ -572,8 +579,8 @@
     bullets.forEach(function(b){if(b.x<camera.x-30||b.x>camera.x+viewWorldW+30||b.y<camera.y-30||b.y>camera.y+viewWorldH+30)return;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.ellipse(-10,0,16,5,0,0,Math.PI*2);ctx.fill();ctx.fillStyle=b.color;ctx.shadowColor=b.color;ctx.shadowBlur=12;ctx.beginPath();ctx.ellipse(0,0,b.r+4,b.r,0,0,Math.PI*2);ctx.fill();ctx.restore();});
     effects.forEach(function(e){var t=1-e.life/e.max;ctx.save();ctx.globalAlpha=(1-t)*.75;ctx.strokeStyle=e.color;ctx.lineWidth=5*(1-t)+1;ctx.beginPath();ctx.arc(e.x,e.y,e.r*(.3+t),0,Math.PI*2);ctx.stroke();ctx.restore();});
     players.forEach(function(p){if(!p.alive||p.x<camera.x-80||p.x>camera.x+viewWorldW+80||p.y<camera.y-80||p.y>camera.y+viewWorldH+80||p!==me&&!canSee(me,p))return;ctx.save();if(inBush(p))ctx.globalAlpha=p===me?.65:.78;drawFoodHero(p,performance.now());drawFoodWeapon(p);
-      if(p.shield>0){ctx.save();ctx.globalAlpha=.72;ctx.strokeStyle="#8cf0ff";ctx.lineWidth=5;ctx.shadowColor="#8cf0ff";ctx.shadowBlur=13;ctx.beginPath();ctx.arc(p.x,p.y,38,0,Math.PI*2);ctx.stroke();ctx.restore();}
-      if(p.superFlash>0){ctx.save();ctx.globalAlpha=p.superFlash;ctx.strokeStyle="#ffe37a";ctx.lineWidth=6;ctx.beginPath();ctx.arc(p.x,p.y,44+(1-p.superFlash)*20,0,Math.PI*2);ctx.stroke();ctx.restore();}
+      if(p.shield>0){ctx.save();var shieldPulse=1+Math.sin(elapsed*9)*.045;ctx.globalAlpha=.74;ctx.strokeStyle="#8cf0ff";ctx.lineWidth=6;ctx.shadowColor="#8cf0ff";ctx.shadowBlur=16;ctx.beginPath();ctx.arc(p.x,p.y,42*shieldPulse,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.13;ctx.fillStyle="#75eaff";ctx.fill();ctx.restore();}
+      if(p.superFlash>0){ctx.save();ctx.globalAlpha=clamp(p.superFlash,0,1);ctx.strokeStyle="#ffe37a";ctx.shadowColor="#ffe37a";ctx.shadowBlur=15;ctx.lineWidth=7;ctx.beginPath();ctx.arc(p.x,p.y,45+(1.05-p.superFlash)*55,0,Math.PI*2);ctx.stroke();ctx.restore();}
       ctx.fillStyle="rgba(24,45,29,.55)";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44,6,3);ctx.fill();ctx.fillStyle="#62C96B";ctx.beginPath();ctx.roundRect(p.x-22,p.y-34,44*clamp(p.hp/p.maxHp,0,1),6,3);ctx.fill();ctx.fillStyle="#234B36";ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillText(p.human?"DIG":foods[p.fighter].name,p.x,p.y-48);ctx.restore();});
     // Brawl Stars-style foreground foliage: the bush softens above your own fighter.
     // Other players outside cannot see the hidden hero at all (filtered above).
