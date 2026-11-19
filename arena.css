@@ -235,3 +235,21 @@
  #arenaGame .arena-action-zone button{font-size:22px;border-width:3px}
  #arenaGame .arena-action-zone button span{font-size:10px}
 }
+
+/* iPad battle controls: Brawl-style placements, unified attack, super above, gadget/dash beside it. */
+@media (pointer:coarse){
+ #arenaGame .arena-action-zone{width:clamp(278px,37vw,370px);height:clamp(240px,29vw,300px)}
+ #arenaGame .arena-aim-stick{right:0;bottom:0;width:clamp(130px,16vw,162px);height:clamp(130px,16vw,162px);border:5px solid #ffdf83;background:radial-gradient(circle at 32% 24%,#ffa76b,#c74d35 72%);box-shadow:0 0 0 5px #542d2ab5,0 7px 0 #713329,0 13px 22px #071d19a8}
+ #arenaGame .arena-aim-stick:after{background:linear-gradient(145deg,#ffd98b,#ef8e4e);border:3px solid #fff1c8}
+ #arenaGame .arena-attack-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(30px,4vw,42px);pointer-events:none}
+ #arenaGame .arena-aim-stick.pressed{filter:brightness(1.14)}
+ #arenaGame .arena-super{right:clamp(20px,4vw,45px);top:0;width:clamp(90px,11vw,108px);height:clamp(90px,11vw,108px)}
+ #arenaGame .arena-dash{right:clamp(153px,19vw,194px);top:clamp(45px,7vw,75px);width:clamp(88px,10vw,106px);height:clamp(88px,10vw,106px)}
+}
+@media (pointer:coarse) and (max-width:760px){
+ #arenaGame .arena-action-zone{width:clamp(195px,46vw,270px);height:clamp(180px,39vw,220px)}
+ #arenaGame .arena-aim-stick{width:clamp(95px,21vw,122px);height:clamp(95px,21vw,122px)}
+ #arenaGame .arena-super{right:5px;top:0;width:clamp(70px,15vw,88px);height:clamp(70px,15vw,88px)}
+ #arenaGame .arena-dash{right:clamp(110px,25vw,145px);top:clamp(32px,8vw,53px);width:clamp(70px,15vw,88px);height:clamp(70px,15vw,88px)}
+ #arenaGame .arena-attack-icon{font-size:28px}
+}
