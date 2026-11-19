@@ -8,7 +8,15 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
-  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0;
+  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netDebug=null, netSequence=0;
+  function onlineStatus(){
+    if(!net||!netDebug)return;
+    var now=performance.now(), remote=players.filter(function(p){return p.netId!==net.userId;});
+    var age=net.host?Math.min.apply(null,remote.map(function(p){return now-(netInputAt[p.netId]||0);})):(now-netSnapshotAt);
+    var ok=age<2000;
+    netDebug.textContent=(net.host?"VÆRT":"GÆST")+" · "+players.length+" spillere · "+(ok?"🟢 LIVE":"🔴 INGEN DATA")+" · "+(Number.isFinite(age)&&age<100000?Math.round(age)+" ms":"venter");
+    netDebug.style.background=ok?"rgba(12,85,55,.92)":"rgba(130,28,35,.96)";
+  }
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
   var audioCtx=null,lastShotSfx=0,audioMaster=null,audioMuted=false;
@@ -328,7 +336,7 @@
       p.revealed=Math.max(0,(p.revealed||0)-dt);p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
       if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){applyDamage(p,19*dt,null);if(p.hp<=0){p.alive=false;addKillFeed(null,p);if(p===me&&!net){finish(false);}}}
       if(net&&net.host&&p!==me){
-        var cmd=netInputs[p.netId]||{};
+        var cmd=performance.now()-(netInputAt[p.netId]||0)<1200?(netInputs[p.netId]||{}):{};
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
         if(cmd.dash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
         if(Number.isFinite(cmd.angle))p.angle=cmd.angle;
@@ -775,6 +783,7 @@
       update(dt);
       if(net&&net.host&&now-netLastSend>85){netLastSend=now;sendNetSnapshot(false);}
     }
+    if(net)onlineStatus();
     draw();if(running)raf=requestAnimationFrame(loop);
   }
   function sendNetInput(){
@@ -811,7 +820,7 @@
   function startOnline(cfg){
     if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
     audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};
-    netInputs=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=performance.now();
+    netInputs=Object.create(null);netInputAt=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=0;netSequence=0;
     players=[];me=null;bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     // All clients generate the exact same map from the room ID.
     var seed=0,seedText=String(cfg.seed||"restemad");
@@ -837,6 +846,8 @@
     root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaRestart").hidden=true;
     root.querySelector("#arenaTouch").hidden=!isTouch();
     root.querySelector("#arenaModeLabel").textContent="🌐 ONLINE SHOWDOWN";
+    if(!netDebug){netDebug=document.createElement("div");netDebug.style.cssText="position:absolute;top:48px;left:8px;z-index:19;padding:6px 9px;border-radius:8px;color:white;font:bold 12px system-ui;pointer-events:none";root.querySelector("#arenaCanvasWrap").appendChild(netDebug);}
+    netDebug.hidden=false;onlineStatus();
     root.querySelector("#arenaHint").textContent=isTouch()?"Venstre: bevæg · Højre: skyd · SUPER":"WASD: bevæg · Klik: skyd · E: super · Shift: dash";
     countdownLeft=3;countdownStep=0;countdownStartAt=performance.now();countdownOverlay.hidden=false;
     countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent="ONLINE SHOWDOWN";countdownTick();
@@ -846,6 +857,7 @@
     if(!net||!net.host||id===net.userId||!players.some(function(p){return p.netId===id})||!cmd)return;
     var dx=Number(cmd.dx),dy=Number(cmd.dy),angle=Number(cmd.angle);
     if(!Number.isFinite(dx)||!Number.isFinite(dy)||!Number.isFinite(angle))return;
+    netInputAt[id]=performance.now();
     netInputs[id]={dx:clamp(dx,-1,1),dy:clamp(dy,-1,1),angle:angle,fire:!!cmd.fire,super:!!cmd.super,dash:!!cmd.dash};
   },map:function(){return obstacles;}};
   function setCanvasSize(){
