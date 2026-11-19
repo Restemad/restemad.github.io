@@ -104,6 +104,7 @@
   }
   function makeMap(){
     obstacles=[];minimapTerrain=null;
+    if(freebuild())return; // Clean flat practice arena, no combat rocks or bushes.
     // Symmetrical but varied combat districts centered on the real playable storm.
     // Keep the central spawn area open and offer cover in every direction.
     var cx=WORLD_W/2,cy=WORLD_H/2;
@@ -145,7 +146,7 @@
     return !cover||bushAt(observer)===cover||Math.hypot(observer.x-target.x,observer.y-target.y)<65||(target.revealed||0)>0;
   }
   function obstacleHit(o,x,y,pad){
-    if(o.kind==="bush"||(o.built&&o.buildType==="floor"))return false;
+    if(o.kind==="bush"||(o.built&&(o.buildType==="floor"||o.buildType==="stair"||o.buildType==="cone")))return false;
     pad=pad||0;
     if(o.built&&o.editMask){
       for(var i=0;i<4;i++){
@@ -685,11 +686,11 @@
     ctx.globalAlpha=1;ctx.restore();
   }
   function draw(){
-    ctx.clearRect(0,0,W,H);ctx.fillStyle="#acd18d";ctx.fillRect(0,0,W,H);var viewPlayer=net&&!me.alive&&spectateTarget&&spectateTarget.alive?spectateTarget:me;if(viewPlayer){camera.x=viewPlayer.x-W/(2*ZOOM);camera.y=viewPlayer.y-H/(2*ZOOM);}ctx.save();if(screenShake>.1){ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));}ctx.translate(-camera.x*ZOOM,-camera.y*ZOOM);ctx.scale(ZOOM,ZOOM);
-    var viewWorldW=W/ZOOM,viewWorldH=H/ZOOM;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
-    ctx.strokeStyle="rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
+    ctx.clearRect(0,0,W,H);var zoom=freebuild()?1.42:ZOOM;ctx.fillStyle=freebuild()?"#66686c":"#acd18d";ctx.fillRect(0,0,W,H);var viewPlayer=net&&!me.alive&&spectateTarget&&spectateTarget.alive?spectateTarget:me;if(viewPlayer){camera.x=viewPlayer.x-W/(2*zoom);camera.y=viewPlayer.y-H/(2*zoom);}ctx.save();if(screenShake>.1){ctx.translate(rand(-screenShake,screenShake),rand(-screenShake,screenShake));}ctx.translate(-camera.x*zoom,-camera.y*zoom);ctx.scale(zoom,zoom);
+    var viewWorldW=W/zoom,viewWorldH=H/zoom;var ground=ctx.createLinearGradient(camera.x,camera.y,camera.x+viewWorldW,camera.y+viewWorldH);ground.addColorStop(0,"#cce5a9");ground.addColorStop(.52,"#acd18d");ground.addColorStop(1,"#8fbd79");ctx.fillStyle=freebuild()?"#696b70":ground;ctx.fillRect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);
+    ctx.strokeStyle=freebuild()?"rgba(255,255,255,.07)":"rgba(75,125,65,.12)";ctx.lineWidth=2;for(var x=Math.floor(camera.x/90)*90;x<camera.x+viewWorldW+90;x+=90){for(var y=Math.floor(camera.y/90)*90;y<camera.y+viewWorldH+90;y+=90){ctx.beginPath();ctx.arc(x+17,y+21,2,0,Math.PI*2);ctx.stroke();ctx.strokeStyle="rgba(66,111,57,.16)";ctx.beginPath();ctx.moveTo(x+48,y+57);ctx.lineTo(x+53,y+49);ctx.moveTo(x+53,y+49);ctx.lineTo(x+57,y+59);ctx.stroke();ctx.strokeStyle="rgba(75,125,65,.12)";}}
     // Deterministic decorative terrain: paths and flowers only, never collision or bush hiding.
-    ctx.save();
+    if(!freebuild()){ctx.save();
     ctx.strokeStyle="rgba(191,157,101,.23)";ctx.lineWidth=72;ctx.lineCap="round";
     ctx.beginPath();ctx.moveTo(WORLD_W/2-1600,WORLD_H/2+290);ctx.bezierCurveTo(WORLD_W/2-680,WORLD_H/2-280,WORLD_W/2+440,WORLD_H/2+320,WORLD_W/2+1510,WORLD_H/2-240);ctx.stroke();
     ctx.strokeStyle="rgba(255,238,186,.22)";ctx.lineWidth=4;ctx.setLineDash([18,30]);ctx.stroke();ctx.setLineDash([]);
@@ -708,16 +709,35 @@
       }
       ctx.drawImage(decor,ix*tile,iy*tile);
     }}
-    ctx.restore();
+    ctx.restore();}
+    if(freebuild()){ctx.save();ctx.strokeStyle="rgba(255,255,255,.10)";ctx.lineWidth=1;for(var gx=Math.floor(camera.x/104)*104;gx<camera.x+viewWorldW+104;gx+=104){ctx.beginPath();ctx.moveTo(gx,camera.y);ctx.lineTo(gx,camera.y+viewWorldH);ctx.stroke();}for(var gy=Math.floor(camera.y/104)*104;gy<camera.y+viewWorldH+104;gy+=104){ctx.beginPath();ctx.moveTo(camera.x,gy);ctx.lineTo(camera.x+viewWorldW,gy);ctx.stroke();}ctx.restore();}
     // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
     if(!freebuild()){ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();}
     // The expanded world boundaries are now far outside the storm play area.
     obstacles.forEach(function(o){
       if(o.x+o.w<camera.x-50||o.x>camera.x+viewWorldW+50||o.y+o.h<camera.y-50||o.y>camera.y+viewWorldH+50)return;
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
-      if(o.built){ctx.save();ctx.globalAlpha=.92;ctx.fillStyle=o.buildType==="floor"?"#65b99b":o.buildType==="stair"?"#ad9cde":o.buildType==="cone"?"#e5b16c":"#85c5e7";if(o.editMask){for(var cell=0;cell<4;cell++){if(!o.editMask[cell])continue;ctx.fillRect(o.x+(cell%2)*o.w/2,o.y+Math.floor(cell/2)*o.h/2,o.w/2,o.h/2);}}else ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle="#38515c";ctx.lineWidth=3;
-      if(o.editMask){for(var ci=0;ci<4;ci++){if(o.editMask[ci])ctx.strokeRect(o.x+(ci%2)*o.w/2,o.y+Math.floor(ci/2)*o.h/2,o.w/2,o.h/2);}}
-      else ctx.strokeRect(o.x,o.y,o.w,o.h);if(o.buildType==="stair"){for(var i=1;i<4;i++){ctx.beginPath();ctx.moveTo(o.x,o.y+o.h*i/4);ctx.lineTo(o.x+o.w,o.y+o.h*i/4);ctx.stroke();}}if(o.buildType==="cone"){ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.stroke();}ctx.restore();return;}
+      if(o.built){
+        ctx.save();ctx.globalAlpha=.98;
+        var palette=o.buildType==="floor"?"#24e4c9":o.buildType==="stair"?"#25d9cf":o.buildType==="cone"?"#f18b54":"#23e4d4";
+        ctx.fillStyle=freebuild()?palette:o.buildType==="floor"?"#65b99b":o.buildType==="stair"?"#ad9cde":o.buildType==="cone"?"#e5b16c":"#85c5e7";
+        if(freebuild()&&(o.buildType==="stair"||o.buildType==="cone")){
+          ctx.beginPath();
+          if(o.buildType==="stair"){ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w,o.y);ctx.lineTo(o.x+o.w,o.y+o.h);}
+          else{ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w/2,o.y);ctx.lineTo(o.x+o.w,o.y+o.h);}
+          ctx.closePath();ctx.fill();
+          ctx.strokeStyle="#e77d54";ctx.lineWidth=5;ctx.stroke();
+          ctx.strokeStyle="rgba(20,65,68,.5)";ctx.lineWidth=2;
+          for(var ri=1;ri<5;ri++){var ry=o.y+o.h*ri/5;ctx.beginPath();ctx.moveTo(o.x,ry);ctx.lineTo(o.x+o.w,ry);ctx.stroke();}
+        }else{
+          var cells=o.editMask||[true,true,true,true];
+          for(var ci=0;ci<4;ci++){if(!cells[ci])continue;var bx=o.x+(ci%2)*o.w/2,by=o.y+Math.floor(ci/2)*o.h/2;
+            ctx.fillRect(bx,by,o.w/2,o.h/2);
+            ctx.strokeStyle=freebuild()?"#ef8c5b":"#38515c";ctx.lineWidth=freebuild()?2.5:3;ctx.strokeRect(bx,by,o.w/2,o.h/2);
+            if(freebuild()){ctx.strokeStyle="rgba(20,94,88,.48)";ctx.lineWidth=1.5;for(var brick=1;brick<3;brick++){ctx.beginPath();ctx.moveTo(bx,by+brick*o.h/6);ctx.lineTo(bx+o.w/2,by+brick*o.h/6);ctx.stroke();}}
+          }
+        }
+        ctx.restore();return;}
       if(o.kind==="wall"){
         ctx.fillStyle="#647866";ctx.beginPath();ctx.moveTo(o.x,o.y+lift);ctx.lineTo(o.x+o.w,o.y+lift);ctx.lineTo(o.x+o.w,o.y+o.h+lift);ctx.lineTo(o.x,o.y+o.h+lift);ctx.closePath();ctx.fill();
         ctx.fillStyle="#aebca5";ctx.strokeStyle="#63755e";ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(o.x,o.y,o.w,o.h,10);ctx.fill();ctx.stroke();
