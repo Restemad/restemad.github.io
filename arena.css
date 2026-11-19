@@ -159,3 +159,16 @@
 #arenaGame .arena-super:active{transform:scale(.94)}
 @media(hover:none),(pointer:coarse){#arenaGame .arena-touch{padding-bottom:max(12px,env(safe-area-inset-bottom,12px));gap:8px}#arenaGame .arena-touch>div{gap:8px!important}#arenaGame .arena-stick{width:108px;height:108px}#arenaGame .arena-fire{width:74px;height:74px}#arenaGame .arena-dash{min-width:64px;min-height:64px}#arenaGame .arena-super{width:70px;height:70px}}
 @media(max-width:760px) and (orientation:portrait){#arenaGame .arena-touch>div{gap:5px!important}#arenaGame .arena-stick{width:84px;height:84px}#arenaGame .arena-fire,#arenaGame .arena-super{width:58px;height:58px;font-size:11px}#arenaGame .arena-dash{min-width:54px;min-height:54px;font-size:11px}}
+
+/* Dramatic black Victory Royale reveal. All artwork is CSS, all audio is synthesized. */
+#arenaCanvasWrap .arena-victory-banner[hidden]{display:none!important}
+#arenaCanvasWrap .arena-victory-banner{position:absolute;z-index:12;left:50%;top:36%;width:min(82%,660px);transform:translate(-50%,-50%) rotate(-3deg);padding:23px 26px 27px;text-align:center;pointer-events:none;overflow:hidden;background:linear-gradient(155deg,#161b21 0%,#050608 62%,#1e252d 100%);border:5px solid #f4f4f4;box-shadow:0 0 0 8px #0a0d12,0 20px 70px #000b;color:#fff;clip-path:polygon(3% 0,100% 0,97% 100%,0 100%);}
+#arenaCanvasWrap .arena-victory-flare{position:absolute;inset:-120%;background:linear-gradient(90deg,transparent 46%,#ffffff24 50%,transparent 54%);transform:rotate(25deg);animation:arenaVictorySweep 1.3s ease-out .3s both}
+#arenaCanvasWrap .arena-victory-crown{position:relative;font:900 clamp(18px,3vw,31px) system-ui;letter-spacing:.08em;color:#f6d26b;text-shadow:0 2px 0 #523b10}
+#arenaCanvasWrap .arena-victory-words{position:relative;font:1000 clamp(38px,8vw,86px)/.88 Impact,"Arial Black",system-ui,sans-serif;letter-spacing:.035em;text-shadow:4px 5px 0 #343c49,-2px -2px 0 #b8c2d2}
+#arenaCanvasWrap .arena-victory-caption{position:relative;margin-top:15px;font:900 clamp(10px,1.8vw,16px) system-ui;letter-spacing:.19em;color:#e9edf2}
+#arenaCanvasWrap .arena-victory-play{animation:arenaVictoryPop .65s cubic-bezier(.15,1.5,.3,1) both}
+@keyframes arenaVictoryPop{0%{opacity:0;transform:translate(-50%,-50%) rotate(-12deg) scale(.25)}65%{opacity:1;transform:translate(-50%,-50%) rotate(1deg) scale(1.07)}100%{transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
+@keyframes arenaVictorySweep{from{transform:translateX(-65%) rotate(25deg)}to{transform:translateX(65%) rotate(25deg)}}
+@media(max-width:700px){#arenaCanvasWrap .arena-victory-banner{top:32%;padding:12px 14px 15px;border-width:3px}#arenaCanvasWrap .arena-victory-words{font-size:clamp(29px,7vw,58px)}#arenaCanvasWrap .arena-victory-caption{margin-top:8px;letter-spacing:.08em}}
+@media(prefers-reduced-motion:reduce){#arenaCanvasWrap .arena-victory-play,#arenaCanvasWrap .arena-victory-flare{animation:none}}

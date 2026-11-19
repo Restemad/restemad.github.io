@@ -9,6 +9,43 @@
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
+  // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
+  var audioCtx=null,lastShotSfx=0;
+  function audioReady(){
+    try{
+      var C=window.AudioContext||window.webkitAudioContext;
+      if(!C)return null;
+      if(!audioCtx)audioCtx=new C();
+      if(audioCtx.state==="suspended")audioCtx.resume().catch(function(){});
+      return audioCtx;
+    }catch(e){return null;}
+  }
+  function tone(freq,duration,type,volume,delay,endFreq){
+    var ac=audioReady();if(!ac)return;
+    try{
+      var t=ac.currentTime+(delay||0),osc=ac.createOscillator(),gain=ac.createGain();
+      osc.type=type||"sine";osc.frequency.setValueAtTime(freq,t);
+      if(endFreq)osc.frequency.exponentialRampToValueAtTime(Math.max(25,endFreq),t+duration);
+      gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0002,volume||.04),t+.008);
+      gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+      osc.connect(gain);gain.connect(ac.destination);osc.start(t);osc.stop(t+duration+.02);
+    }catch(e){}
+  }
+  function sound(kind){
+    if(kind==="shot"){var ac=audioReady();if(!ac||ac.currentTime-lastShotSfx<.075)return;lastShotSfx=ac.currentTime;tone(360,.085,"triangle",.023,0,125);}
+    else if(kind==="hit")tone(210,.10,"square",.025,0,90);
+    else if(kind==="super"){tone(440,.13,"triangle",.06,0,660);tone(660,.18,"sine",.06,.13,990);}
+    else if(kind==="kill"){tone(420,.11,"triangle",.05);tone(630,.13,"triangle",.055,.10);tone(840,.23,"sine",.07,.22);}
+    else if(kind==="win"){
+      // New celebratory four-chord fanfare, not Fortnite's recorded victory cue.
+      [392,494,587,784,988].forEach(function(n,i){tone(n,.28,"triangle",.075,i*.13);tone(n/2,.42,"sine",.04,i*.13);});
+      tone(1175,.85,"sine",.09,.75,1568);tone(196,.9,"triangle",.055,.72);
+    }
+  }
+  var victoryBanner=document.createElement("div");
+  victoryBanner.className="arena-victory-banner";victoryBanner.hidden=true;
+  victoryBanner.innerHTML='<div class="arena-victory-flare"></div><div class="arena-victory-crown">♛ #1</div><div class="arena-victory-words">VICTORY<br>ROYALE</div><div class="arena-victory-caption">SIDSTE SPILLER TILBAGE</div>';
+  root.querySelector("#arenaCanvasWrap").appendChild(victoryBanner);
   var statsKey = "restemad-arena-stats-v1";
   var stats = {wins:0, eliminations:0, trophies:0, games:0};
   try { stats = Object.assign(stats, JSON.parse(localStorage.getItem(statsKey)||"{}")); } catch(e) {}
@@ -108,7 +145,7 @@
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
-    mode=which; players=[];bullets=[];particles=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    audioReady();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
       var f=Math.floor(Math.random()*foods.length),p=freeSpot(me);
@@ -125,7 +162,7 @@
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
   function useSuper(p){
     if(!p||!p.alive||(p.superCharge||0)<100)return false;
-    p.superCharge=0;p.superFlash=.8;
+    p.superCharge=0;p.superFlash=.8;if(p.human)sound("super");
     if(p.fighter===0){
       // Pancake: powerful fan of 11 fast projectiles.
       for(var i=-5;i<=5;i++){var a=p.angle+i*.105;
@@ -160,7 +197,7 @@
   }
   function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
-    p.cool=p.rate;p.recoil=.16;p.revealed=1.1;
+    p.cool=p.rate;p.recoil=.16;p.revealed=1.1;if(p.human)sound("shot");
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
       bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
@@ -304,7 +341,7 @@
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
       for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner){var rx=(p.hitRx||p.r)+b.r,ry=(p.hitRy||p.r)+b.r,dx=(b.x-p.x)/rx,dy=(b.y-p.y)/ry;if(dx*dx+dy*dy<=1){hit=p;break;}}}
-      if(hit){applyDamage(hit,b.damage,b.owner);if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;addKillFeed(b.owner,hit);var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.75));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:1.65,max:1.65});if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
+      if(hit){applyDamage(hit,b.damage,b.owner);if(b.owner===me)sound("hit");if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;addKillFeed(b.owner,hit);var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.75));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:1.65,max:1.65});if(b.owner===me){sound("kill");stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
       return true;
     });
     killFeed=killFeed.filter(function(entry){entry.life-=dt;return entry.life>0;});particles=particles.filter(function(p){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=Math.pow(.08,dt);p.vy*=Math.pow(.08,dt);p.life-=dt;return p.life>0;});floatingTexts=floatingTexts.filter(function(t){t.y-=34*dt;t.life-=dt;return t.life>0;});
@@ -324,6 +361,7 @@
     root.querySelector("#arenaResultText").textContent=won?"Fantastisk! Du er den sidste tilbage.":"God kamp! Prøv igen, og se om du kan blive den sidste.";
     root.querySelector("#arenaResultStats").textContent=me.kills+" elimineringer · "+stats.trophies+" trofæer i alt";
     root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;
+    victoryBanner.hidden=!won;if(won){sound("win");victoryBanner.classList.remove("arena-victory-play");void victoryBanner.offsetWidth;victoryBanner.classList.add("arena-victory-play");}
   }
   function drawFoodHero(p,now){
     var f=foods[p.fighter],phase=p.walkPhase||now*.006+p.x*.013,step=(p.walking?Math.sin(phase):Math.sin(phase*.22)*.07),bob=p.walking?Math.abs(step)*2.8:Math.sin(phase*.22)*1.35,breath=1+Math.sin(phase*.22)*.025,lean=p.walking?Math.cos(phase)*.055:Math.sin(phase*.22)*.012;
@@ -643,7 +681,7 @@
     else{var leave=document.exitFullscreen||document.webkitExitFullscreen;if(leave)leave.call(document);}
   });
   document.addEventListener("fullscreenchange",syncFullscreenLabel);
-  root.querySelector("#arenaExit").addEventListener("click",function(){running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
+  root.querySelector("#arenaExit").addEventListener("click",function(){victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
   root.querySelector("#arenaOnline").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=false;});
   root.querySelector("#arenaOnlineClose").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=true;});
   window.addEventListener("keydown",function(e){var k=e.key.toLowerCase();keys[k]=true;if(k==="e"&&running){e.preventDefault();superPressed=true;}if(k==="shift"&&running){e.preventDefault();if(me&&me.alive&&me.dashCooldown<=0){me.dash=.24;me.dashCooldown=1.65;}}if([" ","arrowup","arrowdown","arrowleft","arrowright"].indexOf(k)>-1&&running)e.preventDefault();});
