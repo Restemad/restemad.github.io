@@ -64,7 +64,7 @@
     makeMap(); me=spawn(selected,true);players.push(me);
     for(var i=0;i<9;i++)players.push(spawn(Math.floor(Math.random()*foods.length),false));
     root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
-    root.querySelector("#arenaCanvasWrap").classList.add("playing");
+    root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
     root.querySelector("#arenaResult").hidden=true;
     root.querySelector("#arenaTouch").hidden=!isTouch();
     root.querySelector("#arenaModeLabel").textContent=which==="showdown"?"SOLO SHOWDOWN":"TRÆNING";
