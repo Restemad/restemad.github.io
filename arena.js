@@ -175,7 +175,7 @@
   function drawFoodHero(p,now){
     var f=foods[p.fighter],phase=now*.006+p.x*.013,step=running?Math.sin(phase):0,bob=Math.abs(step)*2;
     var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),dark="#4b3024";
-    ctx.save();ctx.translate(p.x,p.y-bob);
+    ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12);
     // Ground shadow, chunky boots and gloves create a toy-hero silhouette.
     ctx.fillStyle="rgba(25,39,27,.28)";ctx.beginPath();ctx.ellipse(0,22,29,10,0,0,Math.PI*2);ctx.fill();
     ctx.lineCap="round";ctx.strokeStyle="#493326";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-10,10);ctx.lineTo(-13+step*5,23);ctx.moveTo(10,10);ctx.lineTo(13-step*5,23);ctx.stroke();
