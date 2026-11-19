@@ -72,12 +72,12 @@
     running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
   }
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
-  function shoot(p,angle){
+  function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
     p.cool=p.rate;
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
-      bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
+      bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
     }
     for(var j=0;j<4;j++)particles.push({x:p.x,y:p.y,vx:rand(-45,45),vy:rand(-45,45),life:.2,color:p.color});
   }
@@ -118,7 +118,7 @@
           var mx=0,my=0;
           if(d>300){mx=Math.cos(a);my=Math.sin(a);}else if(d<220){mx=-Math.cos(a);my=-Math.sin(a);}
           movePlayer(p,mx-Math.sin(a)*strafe,my+Math.cos(a)*strafe,dt);
-          if(d<p.range*.82&&Math.random()<.34)shoot(p,a+rand(-.11,.11));
+          if(d<p.range*.82&&Math.random()<.34)shoot(p,a+rand(-.11,.11),t);
         }
       }
     });
@@ -127,7 +127,7 @@
       var wall=obstacles.some(function(o){return b.x>o.x&&b.x<o.x+o.w&&b.y>o.y&&b.y<o.y+o.h;});
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
-      for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner&&Math.hypot(p.x-b.x,p.y-b.y)<p.r+b.r){hit=p;break;}}
+      for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner&&(!b.owner.bot||p===b.target)&&Math.hypot(p.x-b.x,p.y-b.y)<p.r+b.r){hit=p;break;}}
       if(hit){hit.hp-=b.damage;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<12;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-120,120),vy:rand(-120,120),life:rand(.25,.65),color:hit.color});}return false;}
       return true;
     });
