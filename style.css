@@ -75,8 +75,20 @@ a{color:var(--forest)}
 .plate::after{content:"";position:absolute;inset:11%;border-radius:50%;border:2px dashed rgba(35,75,54,.18)}
 .plate-main{font-size:clamp(5rem,16vw,8.5rem);filter:drop-shadow(0 12px 14px rgba(35,75,54,.25))}
 .f{position:absolute;font-size:clamp(2rem,6vw,3rem);background:var(--white);width:1.9em;height:1.9em;display:grid;place-items:center;border-radius:50%;box-shadow:var(--shadow);animation:float 5s ease-in-out infinite}
-.f1{top:6%;left:14%}.f2{top:14%;right:6%;animation-delay:-1s}.f3{bottom:8%;left:8%;animation-delay:-2s}.f4{bottom:6%;right:16%;animation-delay:-3s}.f5{top:46%;left:-4%;animation-delay:-1.5s}.f6{top:42%;right:-3%;animation-delay:-2.5s}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+/* Keep the six food icons moving around the plate, not just bobbing in place. */
+.plate .f{top:50%;left:50%;right:auto;bottom:auto;margin-left:-.95em;margin-top:-.95em;--orbit-radius:clamp(90px,12vw,170px);animation:food-orbit 13s linear infinite;will-change:transform}
+.plate .f1{--orbit-start:-90deg}
+.plate .f2{--orbit-start:-30deg}
+.plate .f3{--orbit-start:30deg}
+.plate .f4{--orbit-start:90deg}
+.plate .f5{--orbit-start:150deg}
+.plate .f6{--orbit-start:210deg}
+@keyframes food-orbit{
+  from{transform:rotate(var(--orbit-start)) translateX(var(--orbit-radius)) rotate(calc(-1 * var(--orbit-start)))}
+  to{transform:rotate(calc(var(--orbit-start) + 360deg)) translateX(var(--orbit-radius)) rotate(calc(-1 * (var(--orbit-start) + 360deg)))}
+}
+@media(max-width:600px){.plate .f{--orbit-radius:clamp(84px,27vw,135px)}}
+
 
 /* Sektioner */
 .section{padding:clamp(54px,8vw,92px) 0}
