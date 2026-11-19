@@ -787,11 +787,11 @@
       }
     }else if(net&&!net.host){
       elapsed+=dt;
-      if(now-netLastInput>90){netLastInput=now;sendNetInput();}
+      if(now-netLastInput>110){netLastInput=now;sendNetInput();}
       if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Ingen kampdata fra værten. I spiller ikke synkroniseret.";
     }else{
       update(dt);
-      if(net&&net.host&&now-netLastSend>120){netLastSend=now;sendNetSnapshot(false);}
+      if(net&&net.host&&now-netLastSend>(players.length>2?200:120)){netLastSend=now;sendNetSnapshot(false);}
     }
     // The guest draws at 40 FPS instead of redrawing the whole large map at 60+ FPS.
     // Network input and snapshots continue independently of the rendering limit.
@@ -810,8 +810,8 @@
   function sendNetSnapshot(done){
     if(!net||!net.host)return;
     net.channel.send({type:"broadcast",event:"state",payload:{
-      players:players.map(function(p){return {id:p.netId,x:p.x,y:p.y,hp:p.hp,alive:p.alive,angle:p.angle,ammo:p.ammo,superCharge:p.superCharge,shield:p.shield,kills:p.kills,walking:p.walking,muzzleFlash:p.muzzleFlash,hurt:p.hurt};}),
-      bullets:bullets.slice(-90).map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
+      players:players.map(function(p){return {id:p.netId,x:Math.round(p.x),y:Math.round(p.y),hp:Math.round(p.hp),alive:p.alive,angle:Math.round(p.angle*100)/100,ammo:p.ammo,superCharge:Math.round(p.superCharge),shield:p.shield,kills:p.kills,walking:p.walking,muzzleFlash:p.muzzleFlash,hurt:p.hurt};}),
+      bullets:bullets.slice(-(players.length>2?45:90)).map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
       zone:zone,elapsed:elapsed,stormStage:stormStage,stormTime:stormTime,done:!!done,winner:players.find(function(p){return p.alive;})?.netId||null
     }});
   }
