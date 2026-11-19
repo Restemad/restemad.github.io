@@ -54,7 +54,15 @@
   function startGame(which){
     mode=which; players=[];bullets=[];particles=[];elapsed=0;winner=null;gameOver=false;
     makeMap(); me=spawn(selected,true);players.push(me);
-    for(var i=0;i<9;i++)players.push(spawn(Math.floor(Math.random()*foods.length),false));
+    var sectors=[[450,400],[2200,350],[4300,400],[500,1450],[2200,1450],[4300,1450],[500,2600],[2200,2600],[4300,2600]];
+    for(var i=0;i<9;i++){
+      var f=Math.floor(Math.random()*foods.length),p=freeSpot(me),sx=sectors[i][0],sy=sectors[i][1];
+      for(var tries=0;tries<100;tries++){
+        var test={x:clamp(sx+rand(-240,240),120,WORLD_W-120),y:clamp(sy+rand(-190,190),120,WORLD_H-120)};
+        if(!obstacles.some(function(o){return test.x>o.x-50&&test.x<o.x+o.w+50&&test.y>o.y-50&&test.y<o.y+o.h+50;})&&players.every(function(q){return Math.hypot(q.x-test.x,q.y-test.y)>540;})){p=test;break;}
+      }
+      var food=foods[f];players.push({x:p.x,y:p.y,r:19,hp:food.hp,maxHp:food.hp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage,rate:food.rate,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0});
+    }
     root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
     root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
     root.querySelector("#arenaResult").hidden=true;
@@ -96,9 +104,9 @@
         var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
         if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
         movePlayer(p,dx,dy,dt);
-        var target=isTouch()?touchAim: pointer;
-        if(target.active){p.angle=Math.atan2(target.y-(p.y/H*canvas.clientHeight),target.x-(p.x/W*canvas.clientWidth));}
-        else p.angle=Math.atan2(pointer.y-p.y,pointer.x-p.x);
+        var target=isTouch()?touchAim:pointer;
+        if(target.active){p.angle=Math.atan2(target.y+camera.y-p.y,target.x+camera.x-p.x);}
+        else p.angle=Math.atan2(pointer.y+camera.y-p.y,pointer.x+camera.x-p.x);
         if(pointer.down||keys[" "]||touchFire)shoot(p,p.angle);
       }else{
         p.ai-=dt;
@@ -173,7 +181,7 @@
     el.addEventListener("pointerdown",function(e){e.preventDefault();active=true;id=e.pointerId;center={x:e.clientX,y:e.clientY};el.setPointerCapture(id);});
     el.addEventListener("pointermove",function(e){if(!active||e.pointerId!==id)return;e.preventDefault();var dx=e.clientX-center.x,dy=e.clientY-center.y,len=Math.max(1,Math.hypot(dx,dy)),lim=42,nx=dx/len*Math.min(1,len/lim),ny=dy/len*Math.min(1,len/lim);
       el.style.setProperty("--jx",(nx*34)+"px");el.style.setProperty("--jy",(ny*34)+"px");
-      if(kind==="move"){touchMove={x:nx,y:ny};}else{var cr=canvas.getBoundingClientRect();touchAim={x:e.clientX-cr.left,y:e.clientY-cr.top,active:true};}
+      if(kind==="move"){touchMove={x:nx,y:ny};}else{var cr=canvas.getBoundingClientRect();touchAim={x:(e.clientX-cr.left)/cr.width*W,y:(e.clientY-cr.top)/cr.height*H,active:true};}
     });
     function end(e){if(!active||e.pointerId!==id)return;active=false;el.style.setProperty("--jx","0px");el.style.setProperty("--jy","0px");if(kind==="move")touchMove={x:0,y:0};else touchAim.active=false;}
     el.addEventListener("pointerup",end);el.addEventListener("pointercancel",end);
@@ -191,7 +199,7 @@
   root.querySelector("#arenaOnlineClose").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=true;});
   window.addEventListener("keydown",function(e){var k=e.key.toLowerCase();keys[k]=true;if([" ","arrowup","arrowdown","arrowleft","arrowright"].indexOf(k)>-1&&running)e.preventDefault();});
   window.addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
-  canvas.addEventListener("pointermove",function(e){var r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width*W;pointer.y=(e.clientY-r.top)/r.height*H;});
+  canvas.addEventListener("pointermove",function(e){var r=canvas.getBoundingClientRect();pointer.x=(e.clientX-r.left)/r.width*W;pointer.y=(e.clientY-r.top)/r.height*H;pointer.active=true;});
   canvas.addEventListener("pointerdown",function(e){if(e.pointerType==="mouse"){pointer.down=true;canvas.setPointerCapture(e.pointerId);}});
   window.addEventListener("pointerup",function(){pointer.down=false;});
   window.addEventListener("blur",function(){pointer.down=false;touchFire=false;keys=Object.create(null);});
