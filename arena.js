@@ -8,15 +8,7 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
-  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netDebug=null, netSequence=0, netLastDraw=0;
-  function onlineStatus(){
-    if(!net||!netDebug)return;
-    var now=performance.now(), remote=players.filter(function(p){return p.netId!==net.userId;});
-    var age=net.host?Math.min.apply(null,remote.map(function(p){return now-(netInputAt[p.netId]||0);})):(now-netSnapshotAt);
-    var ok=age<2000;
-    netDebug.textContent=(net.host?"VÆRT":"GÆST")+" · "+players.length+" spillere · "+(ok?"🟢 LIVE":"🔴 INGEN DATA")+" · "+(Number.isFinite(age)&&age<100000?Math.round(age)+" ms":"venter");
-    netDebug.style.background=ok?"rgba(12,85,55,.92)":"rgba(130,28,35,.96)";
-  }
+  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netSequence=0, netLastDraw=0;
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
   var audioCtx=null,lastShotSfx=0,audioMaster=null,audioMuted=false;
@@ -788,7 +780,6 @@
       update(dt);
       if(net&&net.host&&now-netLastSend>120){netLastSend=now;sendNetSnapshot(false);}
     }
-    if(net)onlineStatus();
     // The guest draws at 40 FPS instead of redrawing the whole large map at 60+ FPS.
     // Network input and snapshots continue independently of the rendering limit.
     if(!net||net.host||now-netLastDraw>=25){netLastDraw=now;draw();}
@@ -840,8 +831,22 @@
     cfg.roster.forEach(function(r,i){
       var f=Number(r.fighter);
       if(!Number.isInteger(f)||f<0||f>=foods.length)f=0;
-      var p=spawn(f,true),a=i*Math.PI*2/cfg.roster.length,rad=180+(i%3)*65;
-      p.x=WORLD_W/2+Math.cos(a)*rad;p.y=WORLD_H/2+Math.sin(a)*rad;
+      var p=spawn(f,true);
+      // Spawn evenly around the safe zone instead of stacking near its centre.
+      // Deterministic candidates ensure host and guests use the same positions.
+      var a=i*Math.PI*2/cfg.roster.length+.17,rad=cfg.roster.length<=2?1130:cfg.roster.length<=4?1080:1000;
+      var found=false;
+      for(var attempt=0;attempt<96;attempt++){
+        var angle=a+(attempt%16)*Math.PI/8;
+        var radius=rad-Math.floor(attempt/16)*115;
+        var sx=zone.x+Math.cos(angle)*radius,sy=zone.y+Math.sin(angle)*radius;
+        var safe=!obstacles.some(function(o){return obstacleHit(o,sx,sy,65);});
+        var spaced=players.every(function(q){return Math.hypot(q.x-sx,q.y-sy)>(cfg.roster.length<=2?1100:cfg.roster.length<=4?650:400);});
+        if(safe&&spaced){p.x=sx;p.y=sy;found=true;break;}
+      }
+      if(!found){
+        var fallback=freeSpot(null);p.x=fallback.x;p.y=fallback.y;
+      }
       p.netId=r.user_id;p.name=r.user_id===cfg.userId?"Dig":String(r.nickname||"Spiller");p.human=true;p.bot=false;p.hp=foods[f].hp;p.maxHp=foods[f].hp;p.ammo=ammoCapacity(p);p.superCharge=0;p.dash=0;p.dashCooldown=0;
       players.push(p);if(r.user_id===cfg.userId)me=p;
     });
@@ -854,8 +859,6 @@
     root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaRestart").hidden=true;
     root.querySelector("#arenaTouch").hidden=!isTouch();
     root.querySelector("#arenaModeLabel").textContent="🌐 ONLINE SHOWDOWN";
-    if(!netDebug){netDebug=document.createElement("div");netDebug.style.cssText="position:absolute;top:48px;left:8px;z-index:19;padding:6px 9px;border-radius:8px;color:white;font:bold 12px system-ui;pointer-events:none";root.querySelector("#arenaCanvasWrap").appendChild(netDebug);}
-    netDebug.hidden=false;onlineStatus();
     root.querySelector("#arenaHint").textContent=isTouch()?"Venstre: bevæg · Højre: skyd · SUPER":"WASD: bevæg · Klik: skyd · E: super · Shift: dash";
     countdownLeft=3;countdownStep=0;countdownStartAt=performance.now();countdownOverlay.hidden=false;
     countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent="ONLINE SHOWDOWN";countdownTick();
