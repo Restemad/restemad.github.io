@@ -79,7 +79,7 @@
       var a=angle+(i-(p.count-1)/2)*p.spread;
       bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
     }
-    for(var j=0;j<4;j++)particles.push({x:p.x,y:p.y,vx:rand(-45,45),vy:rand(-45,45),life:.2,color:p.color});
+    for(var j=0;j<7;j++){var flashAngle=angle+rand(-.9,.9),flashSpeed=rand(45,125);particles.push({x:p.x+Math.cos(angle)*24,y:p.y+Math.sin(angle)*24,vx:Math.cos(flashAngle)*flashSpeed,vy:Math.sin(flashAngle)*flashSpeed,life:rand(.12,.24),color:j%2?"#fff0ad":p.color,r:rand(2,4)});}
   }
   function clearShot(a,b){
     var dx=b.x-a.x,dy=b.y-a.y,steps=Math.max(4,Math.ceil(Math.hypot(dx,dy)/18));
@@ -178,7 +178,7 @@
   function drawFoodHero(p,now){
     var f=foods[p.fighter],phase=p.walkPhase||now*.006+p.x*.013,step=(p.walking?Math.sin(phase):Math.sin(phase*.22)*.07),bob=p.walking?Math.abs(step)*2.8:Math.sin(phase*.22)*1.35,breath=1+Math.sin(phase*.22)*.025;
     var faceX=Math.cos(p.angle),faceY=Math.sin(p.angle),dark="#4b3024";
-    ctx.save();ctx.translate(p.x,p.y-bob);ctx.scale(1.12,1.12*breath);
+    ctx.save();ctx.translate(p.x-Math.cos(p.angle)*(p.recoil||0)*17,p.y-bob-Math.sin(p.angle)*(p.recoil||0)*17);ctx.scale(1.12,1.12*breath);
     // Ground shadow, chunky boots and gloves create a toy-hero silhouette.
     ctx.fillStyle="rgba(25,39,27,.28)";ctx.beginPath();ctx.ellipse(0,22,29,10,0,0,Math.PI*2);ctx.fill();
     ctx.lineCap="round";ctx.strokeStyle="#493326";ctx.lineWidth=9;ctx.beginPath();ctx.moveTo(-10,10);ctx.lineTo(-13+step*5,23);ctx.moveTo(10,10);ctx.lineTo(13-step*5,23);ctx.stroke();
