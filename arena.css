@@ -183,4 +183,55 @@
 #arenaCanvasWrap .arena-countdown-go .arena-countdown-number{color:#ffe27b;font-size:clamp(85px,17vw,180px)}
 @keyframes arenaCountdownPunch{0%{transform:scale(2.1) rotate(-7deg);opacity:0}60%{opacity:1;transform:scale(.92) rotate(2deg)}100%{transform:scale(1) rotate(0)}}
 @media(prefers-reduced-motion:reduce){#arenaCanvasWrap .arena-countdown-pulse{animation:none}}
-\n/* iPad touch controls: larger targets and clear visual hierarchy; no homepage changes. */\n@media (pointer:coarse){\n #arenaGame .arena-touch{z-index:8;align-items:flex-end;padding:0 max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));gap:16px}\n #arenaGame .arena-touch>div{display:flex;align-items:flex-end;gap:12px!important}\n #arenaGame .arena-stick{width:clamp(100px,12vw,142px);height:clamp(100px,12vw,142px);border:4px solid #ffffffb8;background:radial-gradient(circle,#ffffff5c,#2c765a8c);box-shadow:0 6px 0 #163c2b77,0 8px 24px #09251b66}\n #arenaGame .arena-stick:after{width:44%;height:44%;background:linear-gradient(145deg,#7ce9b3,#16784d);border:3px solid white;box-shadow:0 3px 10px #09251b88}\n #arenaGame .arena-fire{width:clamp(76px,9vw,108px);height:clamp(76px,9vw,108px);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;border:4px solid #fff;background:linear-gradient(145deg,#ffca71,#ec743e);color:#43240e;font-size:28px;box-shadow:0 6px 0 #9e4b23,0 10px 20px #1b2d2566}\n #arenaGame .arena-fire span{font-size:13px;letter-spacing:.06em;font-weight:900}\n #arenaGame .arena-super{width:clamp(76px,9vw,100px);height:clamp(76px,9vw,100px);font-size:14px}\n #arenaGame .arena-dash{min-width:clamp(68px,8vw,88px);min-height:clamp(68px,8vw,88px);font-size:13px}\n #arenaGame .arena-fire:active,#arenaGame .arena-dash:active,#arenaGame .arena-super:active{filter:brightness(1.16);transform:scale(.93)}\n #arenaGame .arena-touch button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:none}\n}\n@media (pointer:coarse) and (max-width:760px){\n #arenaGame .arena-touch{padding:0 8px max(9px,env(safe-area-inset-bottom));gap:5px}\n #arenaGame .arena-touch>div{gap:5px!important}\n #arenaGame .arena-stick{width:clamp(72px,17vw,98px);height:clamp(72px,17vw,98px)}\n #arenaGame .arena-fire,#arenaGame .arena-super{width:clamp(58px,13vw,76px);height:clamp(58px,13vw,76px)}\n #arenaGame .arena-fire{font-size:21px}#arenaGame .arena-fire span{font-size:10px}\n #arenaGame .arena-dash{min-width:clamp(52px,12vw,68px);min-height:clamp(52px,12vw,68px);font-size:11px}\n}\n
+
+/* iPad touch controls: larger targets and clear visual hierarchy; no homepage changes. */
+@media (pointer:coarse){
+ #arenaGame .arena-touch{z-index:8;align-items:flex-end;padding:0 max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));gap:16px}
+ #arenaGame .arena-touch>div{display:flex;align-items:flex-end;gap:12px!important}
+ #arenaGame .arena-stick{width:clamp(100px,12vw,142px);height:clamp(100px,12vw,142px);border:4px solid #ffffffb8;background:radial-gradient(circle,#ffffff5c,#2c765a8c);box-shadow:0 6px 0 #163c2b77,0 8px 24px #09251b66}
+ #arenaGame .arena-stick:after{width:44%;height:44%;background:linear-gradient(145deg,#7ce9b3,#16784d);border:3px solid white;box-shadow:0 3px 10px #09251b88}
+ #arenaGame .arena-fire{width:clamp(76px,9vw,108px);height:clamp(76px,9vw,108px);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;border:4px solid #fff;background:linear-gradient(145deg,#ffca71,#ec743e);color:#43240e;font-size:28px;box-shadow:0 6px 0 #9e4b23,0 10px 20px #1b2d2566}
+ #arenaGame .arena-fire span{font-size:13px;letter-spacing:.06em;font-weight:900}
+ #arenaGame .arena-super{width:clamp(76px,9vw,100px);height:clamp(76px,9vw,100px);font-size:14px}
+ #arenaGame .arena-dash{min-width:clamp(68px,8vw,88px);min-height:clamp(68px,8vw,88px);font-size:13px}
+ #arenaGame .arena-fire:active,#arenaGame .arena-dash:active,#arenaGame .arena-super:active{filter:brightness(1.16);transform:scale(.93)}
+ #arenaGame .arena-touch button{cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:none}
+}
+@media (pointer:coarse) and (max-width:760px){
+ #arenaGame .arena-touch{padding:0 8px max(9px,env(safe-area-inset-bottom));gap:5px}
+ #arenaGame .arena-touch>div{gap:5px!important}
+ #arenaGame .arena-stick{width:clamp(72px,17vw,98px);height:clamp(72px,17vw,98px)}
+ #arenaGame .arena-fire,#arenaGame .arena-super{width:clamp(58px,13vw,76px);height:clamp(58px,13vw,76px)}
+ #arenaGame .arena-fire{font-size:21px}#arenaGame .arena-fire span{font-size:10px}
+ #arenaGame .arena-dash{min-width:clamp(52px,12vw,68px);min-height:clamp(52px,12vw,68px);font-size:11px}
+}
+
+/* iPad touch layout: match the rounded dark-green HUD / health-bar look.
+   Actions have independent touch targets, with dash above aim rather than
+   squeezed into the same row. Never change the homepage styles. */
+@media (pointer:coarse) {
+ #arenaGame #arenaTouch.arena-touch{display:flex;position:absolute;inset:auto 0 0;z-index:10;align-items:flex-end;justify-content:space-between;gap:12px;padding:0 max(22px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(22px,env(safe-area-inset-left));pointer-events:none}
+ #arenaGame #arenaTouch[hidden]{display:none!important}
+ #arenaGame .arena-action-zone{position:relative;display:block!important;flex:none;width:clamp(278px,39vw,385px);height:clamp(205px,27vw,265px)}
+ #arenaGame .arena-move-stick{flex:none;width:clamp(124px,16vw,158px);height:clamp(124px,16vw,158px)}
+ #arenaGame .arena-aim-stick{position:absolute;right:0;bottom:0;width:clamp(116px,15vw,148px);height:clamp(116px,15vw,148px)}
+ #arenaGame .arena-stick{border:4px solid #f4e4a8;background:radial-gradient(circle at 35% 28%,#7dbda5c9,#194a3edb);box-shadow:0 0 0 5px #142f2a9c,0 7px 0 #112d27,0 12px 22px #071d19a8;pointer-events:auto;touch-action:none}
+ #arenaGame .arena-stick:after{background:linear-gradient(145deg,#a9f2c4,#2d9469);border:3px solid #fff4c6;box-shadow:0 3px 12px #071d19aa}
+ #arenaGame .arena-action-zone button{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;box-sizing:border-box;border:4px solid #fff0b3;border-radius:50%;font:900 29px/1 system-ui;color:#fff9d9;text-shadow:0 2px 2px #152c2a99;box-shadow:0 0 0 4px #15352cba,0 7px 0 #102e28,0 10px 19px #071b17a6;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+ #arenaGame .arena-action-zone button span{display:block;margin-top:5px;font:900 12px/1 system-ui;letter-spacing:.07em}
+ #arenaGame .arena-fire{right:clamp(126px,17vw,163px);bottom:2px;width:clamp(94px,12vw,118px);height:clamp(94px,12vw,118px);background:linear-gradient(145deg,#f8bc5e,#d9673a)}
+ #arenaGame .arena-super{right:clamp(135px,18vw,175px);top:0;width:clamp(86px,11vw,104px);height:clamp(86px,11vw,104px);background:linear-gradient(145deg,#f3c44b,#9c6920)}
+ #arenaGame .arena-dash{right:12px;top:0;width:clamp(90px,12vw,112px);height:clamp(90px,12vw,112px);background:linear-gradient(145deg,#5db7a4,#226c60)}
+ #arenaGame .arena-action-zone button:active,#arenaGame .arena-action-zone button.pressed{filter:brightness(1.2);transform:scale(.94);box-shadow:0 0 0 4px #15352cba,0 3px 0 #102e28,0 5px 12px #071b17a6}
+}
+@media (pointer:coarse) and (max-width:760px) {
+ #arenaGame #arenaTouch.arena-touch{padding:0 10px max(12px,env(safe-area-inset-bottom));gap:6px}
+ #arenaGame .arena-move-stick{width:clamp(85px,19vw,120px);height:clamp(85px,19vw,120px)}
+ #arenaGame .arena-action-zone{width:clamp(200px,48vw,265px);height:clamp(155px,33vw,195px)}
+ #arenaGame .arena-aim-stick{width:clamp(84px,19vw,115px);height:clamp(84px,19vw,115px)}
+ #arenaGame .arena-fire{right:clamp(91px,21vw,124px);bottom:0;width:clamp(70px,15vw,88px);height:clamp(70px,15vw,88px)}
+ #arenaGame .arena-super{right:clamp(105px,24vw,142px);top:0;width:clamp(66px,14vw,82px);height:clamp(66px,14vw,82px)}
+ #arenaGame .arena-dash{right:2px;top:0;width:clamp(72px,16vw,88px);height:clamp(72px,16vw,88px)}
+ #arenaGame .arena-action-zone button{font-size:22px;border-width:3px}
+ #arenaGame .arena-action-zone button span{font-size:10px}
+}
