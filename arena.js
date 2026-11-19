@@ -7,6 +7,7 @@
   var canvas = root.querySelector("#arenaCanvas"), ctx = canvas.getContext("2d");
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
+  var minimapTerrain=null;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0, netInputAt=Object.create(null), netSequence=0, netLastDraw=0;
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
@@ -94,7 +95,7 @@
     root.querySelector("#arenaFighterDesc").textContent=foods[selected].desc;
   }
   function makeMap(){
-    obstacles=[];
+    obstacles=[];minimapTerrain=null;
     // Symmetrical but varied combat districts centered on the real playable storm.
     // Keep the central spawn area open and offer cover in every direction.
     var cx=WORLD_W/2,cy=WORLD_H/2;
@@ -725,11 +726,18 @@
     ctx.font="600 10px system-ui";ctx.fillText("KILLS",mx+cardW-pad,my+16);
     ctx.textAlign="left";
     ctx.save();ctx.beginPath();ctx.roundRect(mx+pad,mapTop,mw,mh,9);ctx.clip();
-    ctx.fillStyle="#b3d19b";ctx.fillRect(mx+pad,mapTop,mw,mh);
-    obstacles.forEach(function(o){
-      ctx.fillStyle=o.kind==="wall"?"#64786b":o.kind==="rock"?"#889c8b":"#4d9956";
-      ctx.fillRect(mx+pad+o.x/WORLD_W*mw,mapTop+o.y/WORLD_H*mh,Math.max(1,o.w/WORLD_W*mw),Math.max(1,o.h/WORLD_H*mh));
-    });
+    // Static minimap terrain is rasterized once per generated map, not every frame.
+    // The cached pixels are identical to the previous per-frame drawing.
+    if(!minimapTerrain){
+      minimapTerrain=document.createElement("canvas");minimapTerrain.width=mw;minimapTerrain.height=mh;
+      var mctx=minimapTerrain.getContext("2d");
+      mctx.fillStyle="#b3d19b";mctx.fillRect(0,0,mw,mh);
+      obstacles.forEach(function(o){
+        mctx.fillStyle=o.kind==="wall"?"#64786b":o.kind==="rock"?"#889c8b":"#4d9956";
+        mctx.fillRect(o.x/WORLD_W*mw,o.y/WORLD_H*mh,Math.max(1,o.w/WORLD_W*mw),Math.max(1,o.h/WORLD_H*mh));
+      });
+    }
+    ctx.drawImage(minimapTerrain,mx+pad,mapTop);
     ctx.strokeStyle="#ff5e9b";ctx.lineWidth=3.5;ctx.beginPath();
     ctx.ellipse(mx+pad+zone.x/WORLD_W*mw,mapTop+zone.y/WORLD_H*mh,zone.r/WORLD_W*mw,zone.r/WORLD_H*mh,0,0,Math.PI*2);ctx.stroke();
     // White dashed preview of the next safe circle, fixed for the entire round.
