@@ -253,13 +253,13 @@
     var color=foods[p.fighter].color;
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
     ctx.lineCap="round";ctx.lineJoin="round";
-    var kick=clamp((p.recoil||0)/.16,0,1),armX=10-kick*4,armY=1+kick*3;
-    // A full, visible firing arm: shoulder -> sleeve -> forearm -> gripping hand.
-    ctx.strokeStyle="rgba(49,35,27,.95)";ctx.lineWidth=15;ctx.beginPath();ctx.moveTo(-8,11);ctx.quadraticCurveTo(1,7,armX,armY);ctx.stroke();
-    ctx.strokeStyle=foods[p.fighter].color;ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(-8,10);ctx.quadraticCurveTo(1,6,armX,armY);ctx.stroke();
-    ctx.strokeStyle="#d39a69";ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(3,5,);ctx.lineTo(armX,armY);ctx.stroke();
-    // Shift the complete weapon forward so its handle meets the hand outside the body.
-    ctx.translate(10-kick*4,0);
+    var kick=clamp((p.recoil||0)/.16,0,1),armX=22-kick*5,armY=1+kick*3;
+    // Long arm is drawn over the body so the shoulder-to-grip connection is unmistakable.
+    ctx.strokeStyle="rgba(49,35,27,.98)";ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(3,12);ctx.quadraticCurveTo(12,8,armX,armY);ctx.stroke();
+    ctx.strokeStyle=foods[p.fighter].color;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(3,11);ctx.quadraticCurveTo(12,7,armX,armY);ctx.stroke();
+    ctx.strokeStyle="#d39a69";ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(14,5);ctx.lineTo(armX,armY);ctx.stroke();
+    // The grip is placed beyond the fighter's outline, directly under the hand.
+    ctx.translate(22-kick*5,0);
     ctx.fillStyle="#493326";ctx.strokeStyle="#30251f";ctx.lineWidth=2.5;
     ctx.beginPath();ctx.roundRect(-12,-7,19,14,4);ctx.fill();ctx.stroke();
     if(p.fighter===0){
