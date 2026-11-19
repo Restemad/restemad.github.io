@@ -1,5 +1,7 @@
 
 /* RESTEMAD ARENA */
+#arenaCanvasWrap{display:none}
+#arenaCanvasWrap.playing{display:block}
 #arenaGame{--arena-green:#234b36;--arena-cream:#f8f5ec;color:var(--text)}
 #arenaGame [hidden]{display:none!important}
 .arena-shell{background:var(--white);border:1px solid rgba(35,75,54,.12);border-radius:26px;padding:clamp(16px,3vw,30px);box-shadow:var(--shadow)}
