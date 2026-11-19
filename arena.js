@@ -454,7 +454,7 @@
     root.querySelector("#arenaAlive").textContent=alive.length;
     root.querySelector("#arenaKills").textContent=me.kills;
     root.querySelector("#arenaClock").textContent=Math.floor(elapsed/60)+":"+String(Math.floor(elapsed%60)).padStart(2,"0");
-    if((!net&&!me.alive)||alive.length===1){
+    if(!freebuild()&&((!net&&!me.alive)||alive.length===1)){
       finish(me.alive&&alive.length===1);
     }
   }
@@ -676,7 +676,7 @@
     }}
     ctx.restore();
     // Storm tint uses a full viewport rectangle and a circular cutout, even when the ring is off screen.
-    ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();
+    if(!freebuild()){ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();}
     // The expanded world boundaries are now far outside the storm play area.
     obstacles.forEach(function(o){
       if(o.x+o.w<camera.x-50||o.x>camera.x+viewWorldW+50||o.y+o.h<camera.y-50||o.y>camera.y+viewWorldH+50)return;
@@ -793,7 +793,7 @@
     ctx.restore();
   }
   function drawMinimap(){
-    if(!running||!me)return;
+    if(!running||!me||freebuild())return;
     var mw=178,mh=112,pad=12,cardW=202,mx=W-cardW-14,my=14;
     var aliveCount=players.filter(function(p){return p.alive;}).length;
     var visibleFeed=killFeed.slice(0,3),feedH=visibleFeed.length?visibleFeed.length*27+25:45;
@@ -1055,7 +1055,7 @@
   bindTapAction(root.querySelector("#arenaDash"),function(){touchDash=true;});
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
-  root.querySelector("#arenaPractice").addEventListener("click",function(){startGame("practice");});
+  
   root.querySelector("#arenaFreebuild").addEventListener("click",function(){startGame("freebuild");});
   root.querySelectorAll("[data-build-touch]").forEach(function(b){b.addEventListener("pointerdown",function(e){e.preventDefault();e.stopPropagation();var a=b.dataset.buildTouch;if(a==="edit")editBuild();else placeBuild(a);});});
   root.querySelectorAll("[data-build-bind]").forEach(function(b){b.addEventListener("click",function(){b.textContent="Tryk tast";function capture(e){e.preventDefault();e.stopPropagation();window.removeEventListener("keydown",capture,true);var key=e.key.toLowerCase();if(key!=="escape"&&!["shift","control","alt","meta"].includes(key)){Object.keys(buildBinds).forEach(function(k){if(k!==b.dataset.buildBind&&buildBinds[k]===key)buildBinds[k]=buildBinds[b.dataset.buildBind];});buildBinds[b.dataset.buildBind]=key;try{localStorage.setItem("restemad-build-binds-v1",JSON.stringify(buildBinds));}catch(err){}}buildLabels();}window.addEventListener("keydown",capture,true);});});
@@ -1070,7 +1070,7 @@
     else{var leave=document.exitFullscreen||document.webkitExitFullscreen;if(leave)leave.call(document);}
   });
   document.addEventListener("fullscreenchange",syncFullscreenLabel);
-  root.querySelector("#arenaExit").addEventListener("click",function(){net=null;root.querySelector("#arenaRestart").hidden=false;countdownOverlay.hidden=true;victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
+  root.querySelector("#arenaExit").addEventListener("click",function(){net=null;root.querySelector("#arenaRestart").hidden=false;countdownOverlay.hidden=true;victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");buildUI();});
   
   
   window.addEventListener("keydown",function(e){var k=e.key.toLowerCase();if(e.target&&/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))return;keys[k]=true;if(k==="e"&&running){e.preventDefault();superPressed=true;}if(running&&!e.repeat&&!e.ctrlKey&&!e.altKey&&!e.metaKey){var action=Object.keys(buildBinds).find(function(name){return buildBinds[name]===k;});if(action&&(freebuild()||action==="wall")){e.preventDefault();if(action==="edit")editBuild();else placeBuild(action);}}if(k==="shift"&&running){e.preventDefault();if(me&&me.alive&&me.dashCooldown<=0){me.dash=.24;me.dashCooldown=1.65;}}if([" ","arrowup","arrowdown","arrowleft","arrowright"].indexOf(k)>-1&&running)e.preventDefault();});
