@@ -76,3 +76,47 @@
 #arenaCanvas{background:#b9d89b}
 .arena-hud{font-size:1rem}
 @media(max-width:700px){.arena-fighter{min-height:158px}}
+
+/* Theme-aware Arena surfaces: follow the site's current light/dark setting. */
+#arenaGame{color:var(--text)}
+#arenaGame .arena-shell,
+#arenaGame .arena-fighter,
+#arenaGame .arena-stat,
+#arenaGame .arena-board-row,
+#arenaGame .arena-online-info,
+#arenaGame .arena-result-card{color:var(--text);background:var(--white);border-color:rgba(127,160,137,.25)}
+#arenaGame .arena-fighter{background:var(--cream)}
+#arenaGame .arena-fighter b,
+#arenaGame .arena-stat b,
+#arenaGame .arena-hud strong,
+#arenaGame h2,#arenaGame h3{color:var(--dark)}
+#arenaGame .arena-fighter.chosen{background:var(--light);border-color:var(--forest)}
+#arenaGame .arena-kicker{color:var(--forest)}
+#arenaGame .arena-description,
+#arenaGame .arena-muted,
+#arenaGame .arena-stat span{color:var(--text)}
+#arenaGame .arena-canvas-wrap{background:#b9d89b}
+#arenaGame .arena-result-card{box-shadow:0 18px 55px rgba(0,0,0,.28)}
+[data-theme="dark"] #arenaGame .arena-shell{background:linear-gradient(145deg,#1a2a21,#142119);border-color:#344d3c;box-shadow:0 12px 32px rgba(0,0,0,.32)}
+[data-theme="dark"] #arenaGame .arena-fighter{background:linear-gradient(160deg,#263b2e,#1d3025);border-color:#405a48;color:#e4f0e6}
+[data-theme="dark"] #arenaGame .arena-fighter b,
+[data-theme="dark"] #arenaGame .arena-stat b,
+[data-theme="dark"] #arenaGame .arena-hud strong,
+[data-theme="dark"] #arenaGame h2,
+[data-theme="dark"] #arenaGame h3{color:#e4f0e6}
+[data-theme="dark"] #arenaGame .arena-fighter small,
+[data-theme="dark"] #arenaGame .arena-description,
+[data-theme="dark"] #arenaGame .arena-muted,
+[data-theme="dark"] #arenaGame .arena-stat span{color:#c7d8cb}
+[data-theme="dark"] #arenaGame .arena-fighter.chosen{background:#304c39;border-color:#8fc9a6;box-shadow:0 0 0 3px rgba(143,201,166,.18)}
+[data-theme="dark"] #arenaGame .arena-stat,
+[data-theme="dark"] #arenaGame .arena-board-row,
+[data-theme="dark"] #arenaGame .arena-online-info{background:#203328;border-color:#3b5945;color:#dce8df}
+[data-theme="dark"] #arenaGame .arena-result-card{background:#1a2a21;color:#e4f0e6}
+[data-theme="dark"] #arenaGame .arena-result-card h3{color:#e4f0e6}
+[data-theme="dark"] #arenaGame .arena-hud{color:#e4f0e6}
+[data-theme="dark"] #arenaGame .arena-hint{color:#c7d8cb}
+@media(hover:none),(pointer:coarse){
+ [data-theme="dark"] #arenaCanvasWrap.playing{background:#111c16}
+ [data-theme="dark"] #arenaCanvasWrap.playing .arena-hud{background:rgba(26,42,33,.94);color:#e4f0e6}
+}
