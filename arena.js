@@ -166,7 +166,7 @@
     var f=foods[i],p=freeSpot(isHuman?null:me);
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
-  function startGame(which){net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;focusGame(true);
+  function startGame(which){net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;
     audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
@@ -445,15 +445,8 @@
     spectateTarget=living[(index+direction+living.length)%living.length];
     updateSpectator();
   }
-  function focusGame(active){
-    document.body.classList.toggle("restemad-in-game",!!active);
-  }
-  var focusStyle=document.createElement("style");
-  // Only skip offscreen page layout/paint while a match is running.
-  focusStyle.textContent="body.restemad-in-game #view-home > section:not(#quiz){content-visibility:auto;contain-intrinsic-size:auto 600px}";
-  document.head.appendChild(focusStyle);
   function finish(won){
-    if(gameOver)return;gameOver=true;running=false;cancelAnimationFrame(raf);focusGame(false);if(spectateBar)spectateBar.hidden=true;
+    if(gameOver)return;gameOver=true;running=false;cancelAnimationFrame(raf);if(spectateBar)spectateBar.hidden=true;
     if(net&&net.host)sendNetSnapshot(true);
     if(net)root.querySelector("#arenaRestart").hidden=true;
     stats.games++;if(won){stats.wins++;stats.trophies+=8;}else stats.trophies=Math.max(0,stats.trophies-1);
@@ -889,7 +882,7 @@
   }
   function startOnline(cfg){
     if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
-    audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};spectateTarget=null;if(spectateBar)spectateBar.hidden=true;focusGame(true);
+    audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};spectateTarget=null;if(spectateBar)spectateBar.hidden=true;
     netInputs=Object.create(null);netInputAt=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=0;netSequence=0;netLastDraw=0;
     players=[];me=null;bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     // All clients generate the exact same map from the room ID.
