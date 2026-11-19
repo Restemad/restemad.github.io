@@ -318,7 +318,7 @@
       // Wall is perpendicular to aim: looking up/down makes a wide wall; sideways makes a tall wall.
       var dims=vertical?[22,110]:[110,22];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
     }
-    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
+    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,builtAt:performance.now(),expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
     if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
     if(!freebuild()&&players.some(function(p){return p.alive&&obstacleHit(o,p.x,p.y,p.r+5)}))return;
     obstacles.push(o);lastBuildAt=performance.now();buildCooldownUntil=performance.now()+(freebuild()?0:2600);
@@ -333,7 +333,7 @@
     var a=Math.atan2(enemy.y-bot.y,enemy.x-bot.x);
     var x=bot.x+Math.cos(a)*75,y=bot.y+Math.sin(a)*75;
     var tall=Math.abs(Math.cos(a))>.707,w=tall?110:22,h=tall?22:110;
-    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,expires:now+11000,edited:false};
+    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,builtAt:now,expires:now+11000,edited:false};
     if(o.x<25||o.y<25||o.x+o.w>WORLD_W-25||o.y+o.h>WORLD_H-25)return false;
     if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+o.w+6&&v.x+v.w>o.x-6&&v.y<o.y+o.h+6&&v.y+v.h>o.y-6}))return false;
     if(players.some(function(v){return v.alive&&obstacleHit(o,v.x,v.y,(v.r||18)+5)}))return false;
@@ -809,7 +809,23 @@
             if(freebuild()){ctx.strokeStyle="rgba(20,94,88,.48)";ctx.lineWidth=1.5;for(var brick=1;brick<3;brick++){ctx.beginPath();ctx.moveTo(bx,by+brick*o.h/6);ctx.lineTo(bx+o.w/2,by+brick*o.h/6);ctx.stroke();}}
           }
         }
-        if(o.buildType==="wall")drawWallCracks(o);
+        if(o.buildType==="wall"){
+          // 1.5s construction reveal. The wall is solid immediately; only the visuals build up.
+          var progress=Math.min(1,Math.max(0,(performance.now()-(o.builtAt||0))/1500));
+          if(progress<1){
+            var eased=1-Math.pow(1-progress,2),fromBottom=o.h>o.w;
+            ctx.save();
+            ctx.fillStyle="rgba(9,30,42,.78)";
+            if(fromBottom)ctx.fillRect(o.x,o.y,o.w,o.h*(1-eased));
+            else ctx.fillRect(o.x+o.w*eased,o.y,o.w*(1-eased),o.h);
+            ctx.strokeStyle="rgba(220,255,250,"+(.9-progress*.4)+")";ctx.lineWidth=3;
+            ctx.beginPath();
+            if(fromBottom){var lineY=o.y+o.h*(1-eased);ctx.moveTo(o.x-5,lineY);ctx.lineTo(o.x+o.w+5,lineY);}
+            else{var lineX=o.x+o.w*eased;ctx.moveTo(lineX,o.y-5);ctx.lineTo(lineX,o.y+o.h+5);}
+            ctx.stroke();ctx.restore();
+          }
+          drawWallCracks(o);
+        }
         ctx.restore();return;}
       if(o.kind==="wall"){
         ctx.fillStyle="#647866";ctx.beginPath();ctx.moveTo(o.x,o.y+lift);ctx.lineTo(o.x+o.w,o.y+lift);ctx.lineTo(o.x+o.w,o.y+o.h+lift);ctx.lineTo(o.x,o.y+o.h+lift);ctx.closePath();ctx.fill();
