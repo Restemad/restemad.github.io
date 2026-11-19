@@ -65,6 +65,43 @@
   victoryBanner.className="arena-victory-banner";victoryBanner.hidden=true;
   victoryBanner.innerHTML='<div class="arena-victory-flare"></div><div class="arena-victory-crown">♛ #1</div><div class="arena-victory-words">VICTORY<br>ROYALE</div><div class="arena-victory-caption">SIDSTE SPILLER TILBAGE</div>';
   root.querySelector("#arenaCanvasWrap").appendChild(victoryBanner);
+  // Match the 3-2-1 intro with a dramatic win / elimination reveal.
+  var endSequenceTimer=null,endSequenceToken=0;
+  var endSequence=document.createElement("div");
+  endSequence.className="arena-end-sequence";endSequence.hidden=true;
+  endSequence.innerHTML='<div class="arena-end-rays"></div><div class="arena-end-icon"></div><div class="arena-end-heading"></div><div class="arena-end-subtitle"></div>';
+  root.querySelector("#arenaCanvasWrap").appendChild(endSequence);
+  var endStyles=document.createElement("style");
+  endStyles.textContent=`
+    .arena-end-sequence[hidden]{display:none!important}
+    .arena-end-sequence{position:absolute;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;pointer-events:none;color:#fff;text-align:center;background:rgba(6,12,28,.70);animation:arena-end-in .35s ease-out both}
+    .arena-end-sequence.is-win{background:radial-gradient(ellipse at center,rgba(75,62,10,.76),rgba(7,13,29,.88))}
+    .arena-end-sequence.is-loss{background:radial-gradient(ellipse at center,rgba(91,25,43,.72),rgba(8,11,27,.9))}
+    .arena-end-rays{position:absolute;inset:-65%;background:repeating-conic-gradient(from 0deg,rgba(255,225,102,.12) 0deg 12deg,transparent 12deg 30deg);animation:arena-end-spin 12s linear infinite;opacity:0}
+    .arena-end-sequence.is-win .arena-end-rays{opacity:1}
+    .arena-end-icon{position:relative;font-size:clamp(52px,12vw,110px);filter:drop-shadow(0 0 24px rgba(255,221,106,.65));animation:arena-end-pop .75s cubic-bezier(.18,1.6,.4,1) both}
+    .arena-end-heading{position:relative;font-size:clamp(28px,7vw,66px);font-weight:1000;line-height:1.08;letter-spacing:.045em;text-shadow:0 5px 0 rgba(0,0,0,.35),0 0 28px rgba(255,255,255,.25);animation:arena-end-pop .8s .18s cubic-bezier(.18,1.6,.4,1) both}
+    .arena-end-subtitle{position:relative;margin-top:12px;font-size:clamp(13px,2.3vw,21px);font-weight:800;letter-spacing:.16em;animation:arena-end-slide .55s .55s ease-out both}
+    .arena-end-sequence.is-loss .arena-end-icon{filter:drop-shadow(0 0 18px rgba(255,75,107,.65))}
+    .arena-end-sequence.is-loss .arena-end-heading{color:#ffb4c0}
+    @keyframes arena-end-in{from{opacity:0}to{opacity:1}}
+    @keyframes arena-end-pop{from{opacity:0;transform:scale(2.1) rotate(-9deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+    @keyframes arena-end-slide{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes arena-end-spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){.arena-end-sequence,.arena-end-sequence *{animation:none!important}}
+  `;
+  document.head.appendChild(endStyles);
+  function resetEndSequence(){endSequenceToken++;if(endSequenceTimer!==null){clearTimeout(endSequenceTimer);endSequenceTimer=null;}endSequence.hidden=true;endSequence.classList.remove("is-win","is-loss");}
+  function playEndSequence(won,done){
+    resetEndSequence();
+    var token=endSequenceToken;
+    endSequence.classList.add(won?"is-win":"is-loss");
+    endSequence.querySelector(".arena-end-icon").textContent=won?"🏆":"💥";
+    endSequence.querySelector(".arena-end-heading").textContent=won?"VICTORY ROYALE!":"DU ER UDE!";
+    endSequence.querySelector(".arena-end-subtitle").textContent=won?"#1 · SIDSTE SPILLER TILBAGE":"BEDRE HELD NÆSTE GANG";
+    endSequence.hidden=false;
+    endSequenceTimer=setTimeout(function(){if(token!==endSequenceToken)return;endSequence.hidden=true;endSequenceTimer=null;done();},1700);
+  }
   var statsKey = "restemad-arena-stats-v1";
   var stats = {wins:0, eliminations:0, trophies:0, games:0};
   try { stats = Object.assign(stats, JSON.parse(localStorage.getItem(statsKey)||"{}")); } catch(e) {}
@@ -181,7 +218,7 @@
     var f=foods[i],p=freeSpot(isHuman?null:me);
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
-  function startGame(which){buildCooldownUntil=0;net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;
+  function startGame(which){resetEndSequence();buildCooldownUntil=0;net=null;spectateTarget=null;if(spectateBar)spectateBar.hidden=true;
     audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="freebuild"?"FREEBUILD":which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<(which==="freebuild"?0:12);i++){
@@ -567,9 +604,9 @@
     root.querySelector("#arenaResultTitle").textContent=won?"DU VANDT! 🏆":"DU BLEV SLÅET UD!";
     root.querySelector("#arenaResultText").textContent=net?"Onlinekampen er slut. Gå til menuen for at spille igen.":won?"Fantastisk! Du er den sidste tilbage.":"God kamp! Prøv igen, og se om du kan blive den sidste.";
     root.querySelector("#arenaResultStats").textContent=me.kills+" elimineringer · "+stats.trophies+" trofæer i alt";
-    root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;buildUI();countdownOverlay.hidden=true;
+    root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaTouch").hidden=true;buildUI();countdownOverlay.hidden=true;
     if(won){burst(me.x,me.y,"#ffe37a",42,240);ring(me.x,me.y,"#ffffff",120);}
-    victoryBanner.hidden=!won;if(won){sound("win");victoryBanner.classList.remove("arena-victory-play");void victoryBanner.offsetWidth;victoryBanner.classList.add("arena-victory-play");}
+    victoryBanner.hidden=true;if(won)sound("win");playEndSequence(won,function(){root.querySelector("#arenaResult").hidden=false;victoryBanner.hidden=!won;if(won){victoryBanner.classList.remove("arena-victory-play");void victoryBanner.offsetWidth;victoryBanner.classList.add("arena-victory-play");}});
   }
   function drawFoodHero(p,now){
     var f=foods[p.fighter],phase=p.walkPhase||now*.006+p.x*.013,step=(p.walking?Math.sin(phase):Math.sin(phase*.22)*.07),bob=p.walking?Math.abs(step)*2.8:Math.sin(phase*.22)*1.35,breath=1+Math.sin(phase*.22)*.025,lean=p.walking?Math.cos(phase)*.055:Math.sin(phase*.22)*.012;
