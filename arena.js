@@ -84,8 +84,16 @@
   }
   function makeMap(){
     obstacles=[];
-    // Purposeful cover clusters around the playable storm, not scattered across empty land.
-    var spots=[[1050,900],[1650,670],[2350,860],[2900,1250],[1150,1650],[1950,1850],[2670,1800],[3300,2050],[1550,1260],[2420,1390]];
+    // Symmetrical but varied combat districts centered on the real playable storm.
+    // Keep the central spawn area open and offer cover in every direction.
+    var cx=WORLD_W/2,cy=WORLD_H/2;
+    var spots=[];
+    for(var a=0;a<12;a++){
+      var theta=a*Math.PI*2/12+.15,radius=a%3===0?1190:a%3===1?850:1450;
+      spots.push([Math.round(cx+Math.cos(theta)*radius),Math.round(cy+Math.sin(theta)*radius)]);
+    }
+    // Inner cover creates tactical choices without closing the middle.
+    [[-410,-290],[390,-340],[-430,330],[440,290]].forEach(function(v){spots.push([cx+v[0],cy+v[1]]);});
     spots.forEach(function(c,i){
       // One or two large camp bushes per cover area; every bush is enterable.
       var count=i%3===0?2:1;
@@ -98,7 +106,7 @@
       if(i%2===0)obstacles.push({x:c[0]+175,y:c[1]+90,w:100,h:64,bush:false,kind:"wall"});
     });
     // Sparse small cover, no random decorative bushes.
-    [[750,1250],[3080,780],[3500,1530],[850,2050],[2050,450],[2850,2220]].forEach(function(c,i){
+    [[-740,120],[-1300,350],[950,-480],[180,-980],[-200,1040],[1120,690]].forEach(function(c,i){c=[cx+c[0],cy+c[1]];
       obstacles.push({x:c[0],y:c[1],w:i%2?88:115,h:i%2?66:80,bush:false,kind:i%2?"wall":"rock"});
     });
   }
@@ -205,6 +213,9 @@
   }
   function shoot(p,angle,target){
     var f=foods[p.fighter]; if(p.cool>0||!p.alive)return;
+    if(p.ammo===undefined)p.ammo=3;
+    if(p.ammo<=0)return;
+    p.ammo--;p.reloadClock=0;
     p.cool=p.rate;p.recoil=.16;p.muzzleFlash=.11;p.revealed=1.1;if(p.human)sound("shot");
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
@@ -280,6 +291,8 @@
     players.forEach(function(p){
       if(!p.alive)return;
       p.superCharge=p.superCharge||0;
+      if(p.ammo===undefined)p.ammo=3;
+      if(p.ammo<3){p.reloadClock=(p.reloadClock||0)+dt;if(p.reloadClock>=1.75){p.ammo++;p.reloadClock=0;}}else p.reloadClock=0;
       p.muzzleFlash=Math.max(0,(p.muzzleFlash||0)-dt);
       p.hitKick=Math.max(0,(p.hitKick||0)-dt);
       p.healWait=Math.max(0,(p.healWait||0)-dt);
@@ -605,11 +618,18 @@
   // One unified scoreboard: minimap, match stats and elimination feed.
   function drawSuperHud(){
     if(!running||!me||!me.alive)return;
-    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-74,w=188;
-    ctx.save();ctx.fillStyle="rgba(24,41,32,.86)";ctx.beginPath();ctx.roundRect(x,y,w,47,12);ctx.fill();
+    var charge=clamp(me.superCharge||0,0,100),x=22,y=H-110,w=188;
+    ctx.save();ctx.fillStyle="rgba(24,41,32,.86)";ctx.beginPath();ctx.roundRect(x,y,w,78,12);ctx.fill();
     ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.textAlign="left";ctx.fillText(charge>=100?"SUPER KLAR!":"SUPER "+Math.floor(charge)+"%",x+12,y+17);
     ctx.fillStyle="#374a3c";ctx.beginPath();ctx.roundRect(x+12,y+27,w-24,9,5);ctx.fill();
     ctx.fillStyle=charge>=100?"#ffe06b":"#e6b55b";ctx.beginPath();ctx.roundRect(x+12,y+27,(w-24)*charge/100,9,5);ctx.fill();
+    // Three recharging ammo slots, independent of the super meter.
+    ctx.fillStyle="#fff";ctx.font="800 12px system-ui";ctx.fillText("SKUD  "+(me.ammo===undefined?3:me.ammo)+"/3",x+12,y+63);
+    for(var slot=0;slot<3;slot++){
+      var sx=x+91+slot*27,filled=slot<(me.ammo===undefined?3:me.ammo);
+      ctx.fillStyle=filled?"#ffe084":"#374a3c";ctx.beginPath();ctx.roundRect(sx,y+53,21,12,4);ctx.fill();
+      if(!filled&&slot===(me.ammo||0)){ctx.fillStyle="#d7a64d";ctx.beginPath();ctx.roundRect(sx,y+53,21*clamp((me.reloadClock||0)/1.75,0,1),12,4);ctx.fill();}
+    }
     ctx.restore();
   }
   function drawMinimap(){
