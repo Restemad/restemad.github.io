@@ -49,7 +49,7 @@
   }
   function spawn(i,isHuman){
     var f=foods[i],p=freeSpot(isHuman?null:me);
-    return {x:p.x,y:p.y,r:19,hp:f.hp,maxHp:f.hp,fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:f.damage,rate:f.rate,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
+    return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:f.hp,maxHp:f.hp,fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:f.damage,rate:f.rate,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
   function startGame(which){
     mode=which; players=[];bullets=[];particles=[];floatingTexts=[];elapsed=0;winner=null;gameOver=false;
@@ -61,7 +61,7 @@
         var test={x:clamp(sx+rand(-240,240),120,WORLD_W-120),y:clamp(sy+rand(-190,190),120,WORLD_H-120)};
         if(!obstacles.some(function(o){return test.x>o.x-50&&test.x<o.x+o.w+50&&test.y>o.y-50&&test.y<o.y+o.h+50;})&&players.every(function(q){return Math.hypot(q.x-test.x,q.y-test.y)>540;})){p=test;break;}
       }
-      var food=foods[f];players.push({x:p.x,y:p.y,r:19,hp:food.hp,maxHp:food.hp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage,rate:food.rate,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0});
+      var food=foods[f];players.push({x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:food.hp,maxHp:food.hp,fighter:f,color:food.color,name:food.name,bot:true,human:false,alive:true,angle:rand(0,Math.PI*2),cool:rand(.4,1.2),speed:food.speed,damage:food.damage,rate:food.rate,spread:food.spread,count:food.count,range:food.range,ai:rand(.8,1.8),target:null,kills:0});
     }
     root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
     root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
@@ -153,7 +153,7 @@
       var wall=obstacles.some(function(o){return b.x>o.x&&b.x<o.x+o.w&&b.y>o.y&&b.y<o.y+o.h;});
       if(b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H||wall)return false;
       var hit=null;
-      for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner&&true&&Math.hypot(p.x-b.x,p.y-b.y)<p.r+b.r){hit=p;break;}}
+      for(var i=0;i<players.length;i++){var p=players[i];if(p.alive&&p!==b.owner){var rx=(p.hitRx||p.r)+b.r,ry=(p.hitRy||p.r)+b.r,dx=(b.x-p.x)/rx,dy=(b.y-p.y)/ry;if(dx*dx+dy*dy<=1){hit=p;break;}}}
       if(hit){hit.hp-=b.damage;hit.hurt=.13;if(hit.hp<=0){hit.hp=0;hit.alive=false;b.owner.kills++;var heal=Math.min(b.owner.maxHp-b.owner.hp,Math.ceil(b.owner.maxHp*.75));if(heal>0){b.owner.hp+=heal;b.owner.siphonFlash=.7;floatingTexts.push({x:b.owner.x,y:b.owner.y-48,text:"+"+heal+" LIV",color:"#7dff91",life:1.05,max:1.05});for(var h=0;h<16;h++){var ha=Math.PI*2*h/16;particles.push({x:b.owner.x,y:b.owner.y,vx:Math.cos(ha)*rand(65,145),vy:Math.sin(ha)*rand(65,145),life:rand(.35,.7),color:"#73f58b",r:rand(2,5)});}}floatingTexts.push({x:hit.x,y:hit.y-35,text:"ELIMINERET!",color:"#ffe39a",life:1.65,max:1.65});if(b.owner===me){stats.eliminations++;saveStats();}for(var k=0;k<24;k++)particles.push({x:hit.x,y:hit.y,vx:rand(-175,175),vy:rand(-175,175),life:rand(.3,.8),color:[hit.color,"#fff0b0","#ffffff"][k%3],r:rand(2,6)});}return false;}
       return true;
     });
@@ -237,6 +237,11 @@
     var color=foods[p.fighter].color;
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
     ctx.lineCap="round";ctx.lineJoin="round";
+    // Forearm and glove reach forward; the gun is drawn over the gripping hand.
+    ctx.strokeStyle="#573b2a";ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(-13,8);ctx.quadraticCurveTo(-5,3,-1,1);ctx.stroke();
+    ctx.strokeStyle="#d39a69";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(-12,6);ctx.quadraticCurveTo(-5,2,-1,1);ctx.stroke();
+    ctx.fillStyle="#f0c18b";ctx.strokeStyle="#70472e";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(-1,1,7,6,-.2,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.32)";ctx.beginPath();ctx.ellipse(-3,-2,3,1.5,-.3,0,Math.PI*2);ctx.fill();
     // Rear grip and stock, visible against the fighter's body.
     ctx.fillStyle="#493326";ctx.strokeStyle="#30251f";ctx.lineWidth=2.5;
     ctx.beginPath();ctx.roundRect(-12,-7,19,14,4);ctx.fill();ctx.stroke();
@@ -266,6 +271,10 @@
       ctx.fillStyle="#5a3925";ctx.fillRect(27,-13,6,10);ctx.fillRect(27,3,6,10);
       ctx.fillStyle="#fff0bd";ctx.fillRect(3,-3,12,6);
     }
+    // Bevel highlights and a darker underside add depth to the weapon.
+    ctx.strokeStyle="rgba(255,255,255,.62)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(3,-8);ctx.lineTo(25,-8);ctx.stroke();
+    ctx.strokeStyle="rgba(35,25,18,.48)";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(2,9);ctx.lineTo(27,9);ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.18)";ctx.beginPath();ctx.roundRect(1,-5,17,2,1);ctx.fill();
     // Tiny muzzle glint makes the barrel direction obvious even while idle.
     ctx.fillStyle="#fff4c7";ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(34,0,2.5,0,Math.PI*2);ctx.fill();
     ctx.restore();
