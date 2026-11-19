@@ -183,7 +183,19 @@
     var cover=bushAt(target);
     return !cover||bushAt(observer)===cover||Math.hypot(observer.x-target.x,observer.y-target.y)<65||(target.revealed||0)>0;
   }
+  function wallReady(o){return !o.built||!o.builtAt||performance.now()-o.builtAt>=1500;}
+  function wallAabb(o){
+    if(!o.rotation)return {x:o.x,y:o.y,w:o.w,h:o.h};
+    var c=Math.abs(Math.cos(o.rotation)),s=Math.abs(Math.sin(o.rotation)),w=o.w*c+o.h*s,h=o.w*s+o.h*c;
+    return {x:o.x+o.w/2-w/2,y:o.y+o.h/2-h/2,w:w,h:h};
+  }
+  function wallsOverlap(a,b,pad){
+    var aa=wallAabb(a),bb=wallAabb(b),p=pad||0;
+    return aa.x<bb.x+bb.w+p&&aa.x+aa.w>bb.x-p&&aa.y<bb.y+bb.h+p&&aa.y+aa.h>bb.y-p;
+  }
   function obstacleHit(o,x,y,pad){
+    if(o.built&&!wallReady(o))return false;
+    if(o.rotation){var dx=x-o.x-o.w/2,dy=y-o.y-o.h/2,c=Math.cos(o.rotation),s=Math.sin(o.rotation);x=o.x+o.w/2+dx*c+dy*s;y=o.y+o.h/2-dx*s+dy*c;}
     if(o.kind==="bush"||(o.built&&(o.buildType==="floor"||o.buildType==="stair"||o.buildType==="cone")))return false;
     pad=pad||0;
     if(o.built&&o.editMask){
@@ -317,11 +329,11 @@
       if(obstacles.some(function(v){return v.built&&v.buildType===type&&v.x===x&&v.y===y&&v.w===w&&v.h===h;}))return;
     }else{
       // Wall is perpendicular to aim: looking up/down makes a wide wall; sideways makes a tall wall.
-      var dims=vertical?[22,110]:[110,22];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
+      w=110;h=22;x-=w/2;y-=h/2;
     }
-    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,builtAt:performance.now(),expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
-    if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
-    if(!freebuild()&&players.some(function(p){return p.alive&&obstacleHit(o,p.x,p.y,p.r+5)}))return;
+    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:75,maxHp:75,rotation:freebuild()?0:angle+Math.PI/2,builtAt:performance.now(),expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
+    if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&wallsOverlap(v,o,4)}))return;
+    if(!freebuild()&&players.some(function(p){return p.alive&&Math.hypot(p.x-(o.x+o.w/2),p.y-(o.y+o.h/2))<42}))return;
     obstacles.push(o);lastBuildAt=performance.now();buildCooldownUntil=performance.now()+(freebuild()?0:2600);
     if(freebuild()&&obstacles.length>400){var old=obstacles.filter(function(v){return !v.built;}),built=obstacles.filter(function(v){return v.built;});obstacles=old.concat(built.slice(-300));}
     ring(x+w/2,y+h/2,"#b8f0ff",30);
@@ -333,11 +345,11 @@
     bot.nextWallAt=now+rand(4200,8500);
     var a=Math.atan2(enemy.y-bot.y,enemy.x-bot.x);
     var x=bot.x+Math.cos(a)*75,y=bot.y+Math.sin(a)*75;
-    var tall=Math.abs(Math.cos(a))>.707,w=tall?110:22,h=tall?22:110;
-    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,builtAt:now,expires:now+11000,edited:false};
+    var w=110,h=22;
+    var o={kind:"wall",buildType:"wall",x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:75,maxHp:75,rotation:a+Math.PI/2,builtAt:now,expires:now+11000,edited:false};
     if(o.x<25||o.y<25||o.x+o.w>WORLD_W-25||o.y+o.h>WORLD_H-25)return false;
-    if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+o.w+6&&v.x+v.w>o.x-6&&v.y<o.y+o.h+6&&v.y+v.h>o.y-6}))return false;
-    if(players.some(function(v){return v.alive&&obstacleHit(o,v.x,v.y,(v.r||18)+5)}))return false;
+    if(obstacles.some(function(v){return v.kind!=="bush"&&wallsOverlap(v,o,6)}))return false;
+    if(players.some(function(v){return v.alive&&Math.hypot(v.x-x,v.y-y)<42}))return false;
     obstacles.push(o);ring(x,y,"#b8f0ff",30);
     return true;
   }
@@ -788,10 +800,19 @@
     if(!freebuild()){ctx.save();var stormPulse=.5+.5*Math.sin(elapsed*5);ctx.beginPath();ctx.rect(camera.x-3,camera.y-3,viewWorldW+6,viewWorldH+6);ctx.moveTo(zone.x+zone.r,zone.y);ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.fillStyle="rgba(102,35,139,"+(.32+stormPulse*.06)+")";ctx.fill("evenodd");ctx.shadowColor="#ff5c9d";ctx.shadowBlur=18+stormPulse*12;ctx.strokeStyle="#ff5b96";ctx.lineWidth=11;ctx.setLineDash([26,11]);ctx.lineDashOffset=-elapsed*48;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;ctx.setLineDash([]);ctx.strokeStyle="#fff0fc";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(zone.x,zone.y,zone.r-11,0,Math.PI*2);ctx.stroke();ctx.restore();}
     // The expanded world boundaries are now far outside the storm play area.
     obstacles.forEach(function(o){
-      if(o.x+o.w<camera.x-50||o.x>camera.x+viewWorldW+50||o.y+o.h<camera.y-50||o.y>camera.y+viewWorldH+50)return;
+      var bounds=o.rotation?wallAabb(o):o;
+      if(bounds.x+bounds.w<camera.x-50||bounds.x>camera.x+viewWorldW+50||bounds.y+bounds.h<camera.y-50||bounds.y>camera.y+viewWorldH+50)return;
+      if(o.built&&!wallReady(o)){
+        var t=Math.min(1,(performance.now()-o.builtAt)/1500);
+        ctx.save();ctx.translate(o.x+o.w/2,o.y+o.h/2);ctx.rotate(o.rotation||0);
+        ctx.strokeStyle="rgba(115,245,245,"+(.2+t*.5)+")";ctx.lineWidth=2;
+        ctx.strokeRect(-o.w/2,-o.h/2,o.w,o.h);
+        ctx.fillStyle="rgba(110,230,244,"+(.05+t*.13)+")";ctx.fillRect(-o.w/2,-o.h/2,o.w*t,o.h);
+        ctx.restore();return;
+      }
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
       if(o.built){
-        ctx.save();ctx.globalAlpha=.98;
+        ctx.save();if(o.rotation){ctx.translate(o.x+o.w/2,o.y+o.h/2);ctx.rotate(o.rotation);ctx.translate(-o.x-o.w/2,-o.y-o.h/2);}ctx.globalAlpha=.98;
         var palette=o.buildType==="floor"?"#24e4c9":o.buildType==="stair"?"#25d9cf":o.buildType==="cone"?"#f18b54":"#23e4d4";
         ctx.fillStyle=freebuild()?palette:o.buildType==="floor"?"#65b99b":o.buildType==="stair"?"#ad9cde":o.buildType==="cone"?"#e5b16c":"#85c5e7";
         if(freebuild()&&(o.buildType==="stair"||o.buildType==="cone")){
@@ -811,7 +832,7 @@
           }
         }
         if(o.buildType==="wall"){
-          // 1.5s construction reveal. The wall is solid immediately; only the visuals build up.
+          // The wall is solid only once the 1.5s hologram construction completes.
           var progress=Math.min(1,Math.max(0,(performance.now()-(o.builtAt||0))/1500));
           if(progress<1){
             var eased=1-Math.pow(1-progress,2),fromBottom=o.h>o.w;
