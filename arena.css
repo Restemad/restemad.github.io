@@ -235,3 +235,21 @@
  #arenaGame .arena-action-zone button{font-size:22px;border-width:3px}
  #arenaGame .arena-action-zone button span{font-size:10px}
 }
+
+/* Unified iPad attack button: tap to auto-aim, drag and release to aim and fire. */
+@media (pointer:coarse){
+ #arenaGame .arena-action-zone{width:clamp(255px,32vw,330px);height:clamp(212px,26vw,270px)}
+ #arenaGame .arena-aim-stick{right:0;bottom:0;width:clamp(128px,16vw,160px);height:clamp(128px,16vw,160px);border:5px solid #ffdf83;background:radial-gradient(circle at 32% 24%,#ffa76b,#c74d35 72%);box-shadow:0 0 0 5px #542d2ab5,0 7px 0 #713329,0 13px 22px #071d19a8}
+ #arenaGame .arena-aim-stick:after{background:linear-gradient(145deg,#ffd98b,#ef8e4e);border:3px solid #fff1c8}
+ #arenaGame .arena-attack-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(28px,4vw,42px);pointer-events:none;text-shadow:0 2px 3px #522d25}
+ #arenaGame .arena-aim-stick.pressed{filter:brightness(1.14)}
+ #arenaGame .arena-super{right:clamp(148px,19vw,183px);top:0}
+ #arenaGame .arena-dash{right:0;top:0}
+}
+@media (pointer:coarse) and (max-width:760px){
+ #arenaGame .arena-action-zone{width:clamp(190px,45vw,255px);height:clamp(166px,34vw,205px)}
+ #arenaGame .arena-aim-stick{width:clamp(94px,21vw,120px);height:clamp(94px,21vw,120px)}
+ #arenaGame .arena-super{right:clamp(112px,25vw,142px);top:0}
+ #arenaGame .arena-dash{right:0;top:0}
+ #arenaGame .arena-attack-icon{font-size:27px}
+}
