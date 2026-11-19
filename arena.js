@@ -8,6 +8,7 @@
   var W = 960, H = 600, ZOOM = .76, WORLD_W = 7600, WORLD_H = 5200, camera = {x:0,y:0}, running = false, mode = "showdown", selected = 0;
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
+  var net=null, netInputs=Object.create(null), netLastSend=0, netLastInput=0, netSnapshotAt=0;
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
   var audioCtx=null,lastShotSfx=0,audioMaster=null,audioMuted=false;
@@ -162,7 +163,7 @@
     var f=foods[i],p=freeSpot(isHuman?null:me);
     return {x:p.x,y:p.y,r:19,hitRx:24,hitRy:23,hp:isHuman?f.hp:Math.round(f.hp*1.35),maxHp:isHuman?f.hp:Math.round(f.hp*1.35),fighter:i,color:f.color,name:isHuman?"Dig":f.name,bot:!isHuman,human:!!isHuman,alive:true,angle:rand(0,Math.PI*2),cool:rand(0,.6),speed:f.speed,damage:isHuman?f.damage:f.damage*.85,rate:isHuman?f.rate:f.rate*1.25,spread:f.spread,count:f.count,range:f.range,ai:rand(.4,1.2),target:null,kills:0,walkPhase:rand(0,6.28),recoil:0,hurt:0,siphonFlash:0};
   }
-  function startGame(which){
+  function startGame(which){net=null;
     audioReady();countdownLeft=3;countdownStep=0;countdownGoHold=.7;countdownStartAt=performance.now();countdownOverlay.hidden=false;countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent=which==="practice"?"TRÆNING":"SOLO SHOWDOWN";countdownTick();victoryBanner.hidden=true;victoryBanner.classList.remove("arena-victory-play");mode=which; players=[];bullets=[];particles=[];effects=[];screenShake=0;floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
     makeMap(); zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null; me=spawn(selected,true);me.dash=0;me.dashCooldown=0;players.push(me);
     for(var i=0;i<9;i++){
@@ -192,7 +193,7 @@
   function useSuper(p){
     if(!p||!p.alive||(p.superCharge||0)<100)return false;
     p.superCharge=0;p.superFlash=1.05;p.revealed=1.5;
-    if(p.human){sound("super");screenShake=Math.max(screenShake,12);}
+    if(p===me){sound("super");screenShake=Math.max(screenShake,12);}
     ring(p.x,p.y,"#ffffff",115);ring(p.x,p.y,"#ffe27b",85);burst(p.x,p.y,"#ffe27b",34,230);
     if(p.fighter===0){
       // GOLDEN PANCAKE STORM: dense, staggered golden fan with a heavy center beam.
@@ -234,7 +235,7 @@
     if(p.ammo===undefined)p.ammo=ammoCapacity(p);
     if(p.ammo<=0)return;
     p.ammo--;
-    p.cool=p.rate;p.recoil=.16;p.muzzleFlash=.11;p.revealed=1.1;if(p.human)sound("shot");
+    p.cool=p.rate;p.recoil=.16;p.muzzleFlash=.11;p.revealed=1.1;if(p===me)sound("shot");
     for(var i=0;i<p.count;i++){
       var a=angle+(i-(p.count-1)/2)*p.spread;
       bullets.push({x:p.x+Math.cos(a)*22,y:p.y+Math.sin(a)*22,vx:Math.cos(a)*470,vy:Math.sin(a)*470,owner:p,target:target||null,damage:p.damage,life:p.range/470,r: p.fighter===2?5:6,color:p.color});
@@ -325,8 +326,17 @@
         p.hp=Math.min(p.maxHp,p.hp+p.maxHp*.075*dt);
       }
       p.revealed=Math.max(0,(p.revealed||0)-dt);p.cool=Math.max(0,p.cool-dt);p.recoil=Math.max(0,(p.recoil||0)-dt);p.hurt=Math.max(0,(p.hurt||0)-dt);p.siphonFlash=Math.max(0,(p.siphonFlash||0)-dt);if(p.walking)p.walkPhase=(p.walkPhase||0)+dt*10;else p.walkPhase=(p.walkPhase||0)+dt*2.1;
-      if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){applyDamage(p,19*dt,null);if(p.hp<=0){p.alive=false;addKillFeed(null,p);if(p===me){finish(false);}}}
-      if(p.human){
+      if(Math.hypot(p.x-zone.x,p.y-zone.y)>zone.r){applyDamage(p,19*dt,null);if(p.hp<=0){p.alive=false;addKillFeed(null,p);if(p===me&&!net){finish(false);}}}
+      if(net&&net.host&&p!==me){
+        var cmd=netInputs[p.netId]||{};
+        p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
+        if(cmd.dash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
+        if(Number.isFinite(cmd.angle))p.angle=cmd.angle;
+        p.walking=Math.hypot(cmd.dx||0,cmd.dy||0)>.08;
+        movePlayer(p,cmd.dx||0,cmd.dy||0,dt,p.dash>0?2.9:1);
+        if(cmd.fire)shoot(p,p.angle);
+        if(cmd.super){useSuper(p);cmd.super=false;}
+      }else if(p.human){
         if(superPressed){useSuper(p);superPressed=false;}
         p.dash=Math.max(0,(p.dash||0)-dt);p.dashCooldown=Math.max(0,(p.dashCooldown||0)-dt);
         if(touchDash&&p.dashCooldown<=0){p.dash=.24;p.dashCooldown=1.65;}
@@ -398,16 +408,18 @@
     root.querySelector("#arenaAlive").textContent=alive.length;
     root.querySelector("#arenaKills").textContent=me.kills;
     root.querySelector("#arenaClock").textContent=Math.floor(elapsed/60)+":"+String(Math.floor(elapsed%60)).padStart(2,"0");
-    if(!me.alive||alive.length===1){
+    if((!net&&!me.alive)||alive.length===1){
       finish(me.alive&&alive.length===1);
     }
   }
   function finish(won){
     if(gameOver)return;gameOver=true;running=false;cancelAnimationFrame(raf);
+    if(net&&net.host)sendNetSnapshot(true);
+    if(net)root.querySelector("#arenaRestart").hidden=true;
     stats.games++;if(won){stats.wins++;stats.trophies+=8;}else stats.trophies=Math.max(0,stats.trophies-1);
     stats.trophies+=me.kills*2;saveStats();
     root.querySelector("#arenaResultTitle").textContent=won?"DU VANDT! 🏆":"DU BLEV SLÅET UD!";
-    root.querySelector("#arenaResultText").textContent=won?"Fantastisk! Du er den sidste tilbage.":"God kamp! Prøv igen, og se om du kan blive den sidste.";
+    root.querySelector("#arenaResultText").textContent=net?"Onlinekampen er slut. Gå til menuen for at spille igen.":won?"Fantastisk! Du er den sidste tilbage.":"God kamp! Prøv igen, og se om du kan blive den sidste.";
     root.querySelector("#arenaResultStats").textContent=me.kills+" elimineringer · "+stats.trophies+" trofæer i alt";
     root.querySelector("#arenaResult").hidden=false;root.querySelector("#arenaTouch").hidden=true;countdownOverlay.hidden=true;
     if(won){burst(me.x,me.y,"#ffe37a",42,240);ring(me.x,me.y,"#ffffff",120);}
@@ -753,9 +765,77 @@
         countdownOverlay.classList.remove("arena-countdown-go");
         last=now;
       }
-    }else update(dt);
+    }else if(net&&!net.host){
+      elapsed+=dt;
+      if(now-netLastInput>45){netLastInput=now;sendNetInput();}
+      if(now-netSnapshotAt>6500)root.querySelector("#arenaHint").textContent="⚠️ Mistet forbindelse til værten.";
+    }else{
+      update(dt);
+      if(net&&net.host&&now-netLastSend>85){netLastSend=now;sendNetSnapshot(false);}
+    }
     draw();if(running)raf=requestAnimationFrame(loop);
   }
+  function sendNetInput(){
+    if(!net||net.host||!me||!me.alive)return;
+    var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+    var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+    if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
+    var angle=isTouch()&&touchAim.active?Math.atan2(touchAim.y,touchAim.x):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
+    net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?(touchAim.active||touchFire):(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
+    superPressed=false;
+  }
+  function sendNetSnapshot(done){
+    if(!net||!net.host)return;
+    net.channel.send({type:"broadcast",event:"state",payload:{
+      players:players.map(function(p){return {id:p.netId,x:p.x,y:p.y,hp:p.hp,alive:p.alive,angle:p.angle,ammo:p.ammo,superCharge:p.superCharge,shield:p.shield,kills:p.kills,walking:p.walking,muzzleFlash:p.muzzleFlash,hurt:p.hurt};}),
+      bullets:bullets.map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:b.owner&&b.owner.netId,superTrail:b.superTrail};}),
+      zone:zone,elapsed:elapsed,stormStage:stormStage,stormTime:stormTime,done:!!done,winner:players.find(function(p){return p.alive;})?.netId||null
+    }});
+  }
+  function receiveNetSnapshot(snap){
+    if(!net||net.host||!snap||!Array.isArray(snap.players))return;
+    netSnapshotAt=performance.now();elapsed=Number(snap.elapsed)||0;
+    zone=snap.zone||zone;stormStage=snap.stormStage||0;stormTime=snap.stormTime||0;
+    snap.players.forEach(function(st){var p=players.find(function(q){return q.netId===st.id;});if(!p)return;
+      ["x","y","hp","angle","ammo","superCharge","shield","kills","walking","muzzleFlash","hurt"].forEach(function(k){if(st[k]!==undefined)p[k]=st[k];});
+      p.alive=!!st.alive;
+    });
+    bullets=(snap.bullets||[]).map(function(b){return {x:b.x,y:b.y,vx:b.vx,vy:b.vy,r:b.r,color:b.color,life:b.life,owner:players.find(function(p){return p.netId===b.owner;})||null,superTrail:b.superTrail};});
+    root.querySelector("#arenaAlive").textContent=players.filter(function(p){return p.alive;}).length;
+    root.querySelector("#arenaKills").textContent=me.kills||0;
+    root.querySelector("#arenaClock").textContent=Math.floor(elapsed/60)+":"+String(Math.floor(elapsed%60)).padStart(2,"0");
+    if(snap.done&&!gameOver)finish(me.alive&&snap.winner===net.userId);
+  }
+  function startOnline(cfg){
+    if(!cfg||!cfg.channel||!cfg.userId||!Array.isArray(cfg.roster)||cfg.roster.length<2)return;
+    audioReady();mode="online";net={host:!!cfg.host,userId:cfg.userId,channel:cfg.channel};
+    netInputs=Object.create(null);netLastSend=0;netLastInput=0;netSnapshotAt=performance.now();
+    players=[];bullets=[];particles=[];effects=[];floatingTexts=[];killFeed=[];elapsed=0;winner=null;gameOver=false;superPressed=false;
+    makeMap();zone={x:WORLD_W/2,y:WORLD_H/2,r:1780};stormStage=0;stormTime=0;stormStart=null;stormTarget=null;
+    cfg.roster.forEach(function(r,i){
+      var f=Number(r.fighter),p=spawn(f,true),a=i*Math.PI*2/cfg.roster.length,rad=180+(i%3)*65;
+      p.x=WORLD_W/2+Math.cos(a)*rad;p.y=WORLD_H/2+Math.sin(a)*rad;
+      p.netId=r.user_id;p.name=r.nickname;p.human=true;p.bot=false;p.hp=foods[f].hp;p.maxHp=foods[f].hp;p.ammo=ammoCapacity(p);p.superCharge=0;p.dash=0;p.dashCooldown=0;
+      players.push(p);if(r.user_id===cfg.userId)me=p;
+    });
+    if(!me){net=null;return;}
+    if(!cfg.host&&Array.isArray(cfg.obstacles))obstacles=cfg.obstacles;
+    root.querySelector("#arenaMenu").hidden=true;root.querySelector("#arenaHud").hidden=false;
+    root.querySelector("#arenaCanvasWrap").classList.add("playing");setCanvasSize();
+    root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaRestart").hidden=true;
+    root.querySelector("#arenaTouch").hidden=!isTouch();
+    root.querySelector("#arenaModeLabel").textContent="🌐 ONLINE SHOWDOWN";
+    root.querySelector("#arenaHint").textContent=isTouch()?"Venstre: bevæg · Højre: skyd · SUPER":"WASD: bevæg · Klik: skyd · E: super · Shift: dash";
+    countdownLeft=3;countdownStep=0;countdownStartAt=performance.now();countdownOverlay.hidden=false;
+    countdownOverlay.classList.remove("arena-countdown-go");countdownOverlay.querySelector(".arena-countdown-bottom").textContent="ONLINE SHOWDOWN";countdownTick();
+    running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  }
+  window.RESTEMAD_ONLINE_GAME={start:startOnline,receive:receiveNetSnapshot,input:function(id,cmd){
+    if(!net||!net.host||!players.some(function(p){return p.netId===id})||!cmd)return;
+    var dx=Number(cmd.dx),dy=Number(cmd.dy),angle=Number(cmd.angle);
+    if(!Number.isFinite(dx)||!Number.isFinite(dy)||!Number.isFinite(angle))return;
+    netInputs[id]={dx:clamp(dx,-1,1),dy:clamp(dy,-1,1),angle:angle,fire:!!cmd.fire,super:!!cmd.super,dash:!!cmd.dash};
+  },map:function(){return obstacles;}};
   function setCanvasSize(){
     var rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,isTouch()?1.25:2);
     canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));
@@ -782,7 +862,7 @@
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
   root.querySelector("#arenaPractice").addEventListener("click",function(){startGame("practice");});
-  root.querySelector("#arenaRestart").addEventListener("click",function(){startGame(mode);});
+  root.querySelector("#arenaRestart").addEventListener("click",function(){if(mode==="online"){root.querySelector("#arenaExit").click();return;}startGame(mode);});
   root.querySelector("#arenaExitResult").addEventListener("click",function(){root.querySelector("#arenaExit").click();});
   var fullscreenBtn=root.querySelector("#arenaFullscreen");
   function syncFullscreenLabel(){fullscreenBtn.textContent=document.fullscreenElement?"⤢ Afslut fuld skærm":"⛶ Fuld skærm";}
@@ -792,7 +872,7 @@
     else{var leave=document.exitFullscreen||document.webkitExitFullscreen;if(leave)leave.call(document);}
   });
   document.addEventListener("fullscreenchange",syncFullscreenLabel);
-  root.querySelector("#arenaExit").addEventListener("click",function(){countdownOverlay.hidden=true;victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
+  root.querySelector("#arenaExit").addEventListener("click",function(){net=null;root.querySelector("#arenaRestart").hidden=false;countdownOverlay.hidden=true;victoryBanner.hidden=true;running=false;cancelAnimationFrame(raf);root.querySelector("#arenaMenu").hidden=false;root.querySelector("#arenaHud").hidden=true;root.querySelector("#arenaResult").hidden=true;root.querySelector("#arenaCanvasWrap").classList.remove("playing");});
   root.querySelector("#arenaOnline").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=false;});
   root.querySelector("#arenaOnlineClose").addEventListener("click",function(){root.querySelector("#arenaOnlineInfo").hidden=true;});
   window.addEventListener("keydown",function(e){var k=e.key.toLowerCase();keys[k]=true;if(k==="e"&&running){e.preventDefault();superPressed=true;}if(k==="shift"&&running){e.preventDefault();if(me&&me.alive&&me.dashCooldown<=0){me.dash=.24;me.dashCooldown=1.65;}}if([" ","arrowup","arrowdown","arrowleft","arrowright"].indexOf(k)>-1&&running)e.preventDefault();});
