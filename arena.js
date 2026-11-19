@@ -1113,7 +1113,6 @@
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
   
-  root.querySelector("#arenaFreebuild").addEventListener("click",function(){startGame("freebuild");});
   root.querySelector("#arenaBindToggle").addEventListener("click",function(){var p=root.querySelector("#arenaBindPanel");p.hidden=!p.hidden;});
   root.querySelectorAll("[data-edit-cell]").forEach(function(b){b.addEventListener("click",function(){var i=Number(b.dataset.editCell);editCells[i]=!editCells[i];syncEditPanel();});});
   root.querySelector("#arenaEditConfirm").addEventListener("click",confirmEdit);
