@@ -10,29 +10,39 @@
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
   var me = null, winner = null, gameOver = false, raf = 0, zone = {x:WORLD_W/2,y:WORLD_H/2,r:1780}, stormStage=0, stormTime=0, stormStart=null, stormTarget=null, dashHeld = false;
   // Original synthesized arcade effects (no external audio downloads or copyrighted samples).
-  var audioCtx=null,lastShotSfx=0;
+  var audioCtx=null,lastShotSfx=0,audioMaster=null,audioMuted=false;
+  var audioButton=document.createElement("button");
+  audioButton.type="button";audioButton.textContent="🔊 LYD: TIL";
+  audioButton.setAttribute("aria-label","Slå spillets lyd til eller fra");
+  audioButton.style.cssText="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:15;border:2px solid #fff7b8;border-radius:12px;background:#182b28;color:white;padding:8px 13px;font:800 12px system-ui;cursor:pointer;touch-action:manipulation";
+  root.querySelector("#arenaCanvasWrap").appendChild(audioButton);
+  audioButton.addEventListener("pointerdown",function(){audioReady();},{passive:true});
+  audioButton.addEventListener("click",function(){audioMuted=!audioMuted;audioButton.textContent=audioMuted?"🔇 LYD: FRA":"🔊 LYD: TIL";audioReady();if(!audioMuted){tone(600,.18,"sine",.22);tone(880,.24,"triangle",.2,.16);}});
+  root.addEventListener("pointerdown",function(){audioReady();},{passive:true});
+  root.addEventListener("keydown",function(){audioReady();});
+
   function audioReady(){
     try{
       var C=window.AudioContext||window.webkitAudioContext;
       if(!C)return null;
-      if(!audioCtx)audioCtx=new C();
+      if(!audioCtx){audioCtx=new C();audioMaster=audioCtx.createGain();audioMaster.gain.value=.9;audioMaster.connect(audioCtx.destination);}
       if(audioCtx.state==="suspended")audioCtx.resume().catch(function(){});
       return audioCtx;
     }catch(e){return null;}
   }
   function tone(freq,duration,type,volume,delay,endFreq){
-    var ac=audioReady();if(!ac)return;
+    var ac=audioReady();if(!ac||audioMuted)return;
     try{
       var t=ac.currentTime+(delay||0),osc=ac.createOscillator(),gain=ac.createGain();
       osc.type=type||"sine";osc.frequency.setValueAtTime(freq,t);
       if(endFreq)osc.frequency.exponentialRampToValueAtTime(Math.max(25,endFreq),t+duration);
-      gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0002,volume||.04),t+.008);
+      gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(Math.max(.0002,(volume||.04)*2.3),t+.008);
       gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
-      osc.connect(gain);gain.connect(ac.destination);osc.start(t);osc.stop(t+duration+.02);
+      osc.connect(gain);gain.connect(audioMaster||ac.destination);osc.start(t);osc.stop(t+duration+.02);
     }catch(e){}
   }
   function sound(kind){
-    if(kind==="shot"){var ac=audioReady();if(!ac||ac.currentTime-lastShotSfx<.075)return;lastShotSfx=ac.currentTime;tone(360,.085,"triangle",.023,0,125);}
+    if(kind==="shot"){var ac=audioReady();if(!ac||audioMuted||ac.currentTime-lastShotSfx<.075)return;lastShotSfx=ac.currentTime;tone(360,.085,"triangle",.023,0,125);}
     else if(kind==="hit")tone(210,.10,"square",.025,0,90);
     else if(kind==="super"){tone(180,.28,"sawtooth",.045,0,65);tone(440,.16,"triangle",.065,0,880);tone(660,.26,"sine",.07,.13,1320);tone(990,.34,"triangle",.06,.3,1568);}
     else if(kind==="kill"){tone(420,.11,"triangle",.05);tone(630,.13,"triangle",.055,.10);tone(840,.23,"sine",.07,.22);}
