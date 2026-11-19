@@ -146,14 +146,15 @@
   }
   function obstacleHit(o,x,y,pad){
     if(o.kind==="bush"||(o.built&&o.buildType==="floor"))return false;
-    if(o.built&&o.editMask){
-      var localX=(x-o.x)/o.w,localY=(y-o.y)/o.h;
-      if(localX>=0&&localX<=1&&localY>=0&&localY<=1){
-        var idx=(localY>=.5?2:0)+(localX>=.5?1:0);
-        if(!o.editMask[idx])return false;
-      }
-    }
     pad=pad||0;
+    if(o.built&&o.editMask){
+      for(var i=0;i<4;i++){
+        if(!o.editMask[i])continue;
+        var bx=o.x+(i%2)*o.w/2,by=o.y+Math.floor(i/2)*o.h/2;
+        if(x>bx-pad&&x<bx+o.w/2+pad&&y>by-pad&&y<by+o.h/2+pad)return true;
+      }
+      return false;
+    }
     if(o.kind==="wall")return x>o.x-pad&&x<o.x+o.w+pad&&y>o.y-pad&&y<o.y+o.h+pad;
     var rx=o.w*.5+pad,ry=o.h*.5+pad,dx=(x-(o.x+o.w*.5))/rx,dy=(y-(o.y+o.h*.5))/ry;
     return dx*dx+dy*dy<1;
@@ -259,18 +260,31 @@
     ring(p.x+Math.cos(angle)*45,p.y+Math.sin(angle)*45,p.color,17);
     for(var j=0;j<7;j++){var flashAngle=angle+rand(-.9,.9),flashSpeed=rand(45,125);particles.push({x:p.x+Math.cos(angle)*24,y:p.y+Math.sin(angle)*24,vx:Math.cos(flashAngle)*flashSpeed,vy:Math.sin(flashAngle)*flashSpeed,life:rand(.12,.24),color:j%2?"#fff0ad":p.color,r:rand(2,4)});}
   }
+  // Shared 104px grid: every piece uses the same cell and four exact corners.
+  // Walls sit on grid edges; floors, ramps and cones occupy whole cells.
   function placeBuild(type){
     if(!running||gameOver||!me||!me.alive||net||(!freebuild()&&type!=="wall")||(!freebuild()&&performance.now()<buildCooldownUntil))return;
     if(freebuild()&&performance.now()-lastBuildAt<12)return;
-    var x=me.x+Math.cos(me.angle)*90,y=me.y+Math.sin(me.angle)*90,vertical=Math.abs(Math.cos(me.angle))>.707;
-    var dims=type==="wall"?(vertical?[22,110]:[110,22]):type==="floor"?[104,104]:type==="stair"?(vertical?[65,104]:[104,65]):[84,84],w=dims[0],h=dims[1];
-    if(freebuild()){var grid=104;x=Math.round(x/grid)*grid;y=Math.round(y/grid)*grid;}
-    var o={kind:"wall",buildType:type,x:x-w/2,y:y-h/2,w:w,h:h,built:true,hp:95,expires:freebuild()?Infinity:performance.now()+11000,edited:false};
-    if(obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
-    if(type!=="floor"&&players.some(function(p){return p.alive&&obstacleHit(o,p.x,p.y,p.r+5)}))return;
+    var angle=me.angle,vertical=Math.abs(Math.cos(angle))>.707;
+    var x=me.x+Math.cos(angle)*90,y=me.y+Math.sin(angle)*90,w,h,gx,gy,edge;
+    if(freebuild()){
+      var grid=104;
+      gx=Math.floor(x/grid);gy=Math.floor(y/grid);
+      if(type==="wall"){
+        if(vertical){edge=Math.cos(angle)>=0?"right":"left";x=(gx+(edge==="right"?1:0))*grid-11;y=gy*grid;w=22;h=grid;}
+        else{edge=Math.sin(angle)>=0?"bottom":"top";x=gx*grid;y=(gy+(edge==="bottom"?1:0))*grid-11;w=grid;h=22;}
+      }else{x=gx*grid;y=gy*grid;w=grid;h=grid;}
+      // Prevent duplicates on the same edge/cell without blocking adjacent builds.
+      if(obstacles.some(function(v){return v.built&&v.buildType===type&&v.x===x&&v.y===y&&v.w===w&&v.h===h;}))return;
+    }else{
+      var dims=vertical?[22,110]:[110,22];w=dims[0];h=dims[1];x-=w/2;y-=h/2;
+    }
+    var o={kind:"wall",buildType:type,x:x,y:y,w:w,h:h,built:true,hp:95,expires:freebuild()?Infinity:performance.now()+11000,edited:false,gridX:gx,gridY:gy,edge:edge};
+    if(!freebuild()&&obstacles.some(function(v){return v.kind!=="bush"&&v.x<o.x+w+4&&v.x+v.w>o.x-4&&v.y<o.y+h+4&&v.y+v.h>o.y-4}))return;
+    if(!freebuild()&&players.some(function(p){return p.alive&&obstacleHit(o,p.x,p.y,p.r+5)}))return;
     obstacles.push(o);lastBuildAt=performance.now();buildCooldownUntil=performance.now()+(freebuild()?0:2600);
     if(freebuild()&&obstacles.length>400){var old=obstacles.filter(function(v){return !v.built;}),built=obstacles.filter(function(v){return v.built;});obstacles=old.concat(built.slice(-300));}
-    ring(x,y,"#b8f0ff",30);
+    ring(x+w/2,y+h/2,"#b8f0ff",30);
   }
   function editBuild(){
     if(!freebuild()||!running||!me||!me.alive)return;
@@ -701,7 +715,9 @@
     obstacles.forEach(function(o){
       if(o.x+o.w<camera.x-50||o.x>camera.x+viewWorldW+50||o.y+o.h<camera.y-50||o.y>camera.y+viewWorldH+50)return;
       var lift=o.kind==="wall"?18:o.kind==="rock"?13:5;
-      if(o.built){ctx.save();ctx.globalAlpha=.92;ctx.fillStyle=o.buildType==="floor"?"#65b99b":o.buildType==="stair"?"#ad9cde":o.buildType==="cone"?"#e5b16c":"#85c5e7";if(o.editMask){for(var cell=0;cell<4;cell++){if(!o.editMask[cell])continue;ctx.fillRect(o.x+(cell%2)*o.w/2,o.y+Math.floor(cell/2)*o.h/2,o.w/2,o.h/2);}}else ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle="#38515c";ctx.lineWidth=3;ctx.strokeRect(o.x,o.y,o.w,o.h);if(o.buildType==="stair"){for(var i=1;i<4;i++){ctx.beginPath();ctx.moveTo(o.x,o.y+o.h*i/4);ctx.lineTo(o.x+o.w,o.y+o.h*i/4);ctx.stroke();}}if(o.buildType==="cone"){ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.stroke();}ctx.restore();return;}
+      if(o.built){ctx.save();ctx.globalAlpha=.92;ctx.fillStyle=o.buildType==="floor"?"#65b99b":o.buildType==="stair"?"#ad9cde":o.buildType==="cone"?"#e5b16c":"#85c5e7";if(o.editMask){for(var cell=0;cell<4;cell++){if(!o.editMask[cell])continue;ctx.fillRect(o.x+(cell%2)*o.w/2,o.y+Math.floor(cell/2)*o.h/2,o.w/2,o.h/2);}}else ctx.fillRect(o.x,o.y,o.w,o.h);ctx.strokeStyle="#38515c";ctx.lineWidth=3;
+      if(o.editMask){for(var ci=0;ci<4;ci++){if(o.editMask[ci])ctx.strokeRect(o.x+(ci%2)*o.w/2,o.y+Math.floor(ci/2)*o.h/2,o.w/2,o.h/2);}}
+      else ctx.strokeRect(o.x,o.y,o.w,o.h);if(o.buildType==="stair"){for(var i=1;i<4;i++){ctx.beginPath();ctx.moveTo(o.x,o.y+o.h*i/4);ctx.lineTo(o.x+o.w,o.y+o.h*i/4);ctx.stroke();}}if(o.buildType==="cone"){ctx.beginPath();ctx.moveTo(o.x,o.y);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y);ctx.moveTo(o.x,o.y+o.h);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x+o.w,o.y+o.h);ctx.stroke();}ctx.restore();return;}
       if(o.kind==="wall"){
         ctx.fillStyle="#647866";ctx.beginPath();ctx.moveTo(o.x,o.y+lift);ctx.lineTo(o.x+o.w,o.y+lift);ctx.lineTo(o.x+o.w,o.y+o.h+lift);ctx.lineTo(o.x,o.y+o.h+lift);ctx.closePath();ctx.fill();
         ctx.fillStyle="#aebca5";ctx.strokeStyle="#63755e";ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(o.x,o.y,o.w,o.h,10);ctx.fill();ctx.stroke();
