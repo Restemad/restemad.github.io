@@ -14,7 +14,14 @@
 .arena-fighters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
 .arena-fighter{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:150px;padding:14px 8px;border:2px solid rgba(35,75,54,.13);border-radius:18px;background:var(--cream);color:var(--text);cursor:pointer;text-align:center;font:inherit}
 .arena-fighter.chosen{border-color:var(--forest);background:var(--light);box-shadow:0 0 0 3px rgba(49,92,67,.12)}
-.fighter-emoji{font-size:2.7rem;line-height:1.2}
+.fighter-preview{width:66px;height:58px;position:relative;display:block;filter:drop-shadow(0 5px 3px #26342b22)}
+.fighter-preview:before{content:"";position:absolute;left:12px;top:10px;width:42px;height:34px;border-radius:50%;background:#f3c45e;border:3px solid #a66c32}
+.fighter-preview:after{content:"•  •";white-space:pre;position:absolute;left:23px;top:20px;color:#302b26;font-size:15px;font-weight:900;letter-spacing:4px}
+.fighter-preview-1:before{background:linear-gradient(135deg,#e8c17c 0 35%,#70a95a 36% 70%,#e85d4a 71%);border-radius:45%}
+.fighter-preview-2:before{background:radial-gradient(circle at 30% 40%,#e66c43 0 12%,transparent 13%),radial-gradient(circle at 65% 35%,#68a95c 0 12%,transparent 13%),#f7d18a;border-radius:50% 50% 35% 35%}
+.fighter-preview-3:before{background:#e5b66d;border-radius:9px;border:4px solid #9a6537;transform:rotate(-8deg)}
+.fighter-preview i{position:absolute;z-index:2;left:26px;top:43px;width:7px;height:10px;border-radius:4px;background:#554331;box-shadow:12px 0 #554331}
+.fighter-preview b{position:absolute;z-index:2;left:27px;top:30px;width:12px;height:5px;border-bottom:2px solid #302b26;border-radius:50%}
 .arena-fighter b{font:600 .92rem var(--head);color:var(--dark)}
 .arena-fighter small{font-size:.72rem;line-height:1.35}
 .arena-description{min-height:48px;margin:12px 0;color:var(--text)}
@@ -58,3 +65,14 @@
  .arena-fighter{min-height:130px}
  .arena-board-row{display:grid;grid-template-columns:1fr 1fr}
 }
+
+/* Arena rework: larger, clearer playfield and food-hero selection art */
+.arena-shell{padding:clamp(22px,4vw,42px);background:linear-gradient(145deg,#fffdf6,#f0f5e9)}
+.arena-fighter{min-height:176px;justify-content:center;gap:9px;background:linear-gradient(160deg,#f8f5ec,#e6efdf);border-color:#cbd9c5;transition:transform .18s,box-shadow .18s}
+.arena-fighter:hover{transform:translateY(-4px);box-shadow:0 12px 24px #234b3620}
+.arena-fighter.chosen{background:linear-gradient(160deg,#e5f2dc,#d1e7c8);border-color:#397b48}
+.arena-fighter b{font-size:1rem}
+.arena-canvas-wrap{border:5px solid #315c43;box-shadow:0 18px 44px #203e2a30}
+#arenaCanvas{background:#b9d89b}
+.arena-hud{font-size:1rem}
+@media(max-width:700px){.arena-fighter{min-height:158px}}
