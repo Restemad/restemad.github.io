@@ -363,7 +363,11 @@
             }
             p.angle=best===null?rawAngle:rawAngle+Math.atan2(Math.sin(best-rawAngle),Math.cos(best-rawAngle))*.65;
           }
-          if(touchReleaseShot||performance.now()<touchAutoBurstUntil){p.angle=touchAutoAim||performance.now()<touchAutoBurstUntil?autoAimAngle(p):touchShotAngle;shoot(p,p.angle);}
+          if(touchReleaseShot||performance.now()<touchAutoBurstUntil){
+            var autoFiring=touchAutoAim||performance.now()<touchAutoBurstUntil;
+            var shotAngle=autoFiring?autoAimAngle(p):touchShotAngle;
+            if(Number.isFinite(shotAngle)){p.angle=shotAngle;shoot(p,shotAngle);}
+          }
           touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;
         }else{
           p.angle=Math.atan2(pointer.y/ZOOM+camera.y-p.y,pointer.x/ZOOM+camera.x-p.x);
@@ -854,7 +858,7 @@
     var dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
     var dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
     if(isTouch()){dx=touchMove.x;dy=touchMove.y;}
-    var angle=isTouch()?(performance.now()<touchAutoBurstUntil?autoAimAngle(me):touchReleaseShot?(touchAutoAim?autoAimAngle(me):touchShotAngle):touchAim.active?Math.atan2(touchAim.y,touchAim.x):me.angle):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
+    var angle=isTouch()?((touchReleaseShot&&touchAutoAim)||performance.now()<touchAutoBurstUntil?autoAimAngle(me):touchReleaseShot&&Number.isFinite(touchShotAngle)?touchShotAngle:touchAim.active?Math.atan2(touchAim.y,touchAim.x):me.angle):Math.atan2(pointer.y/ZOOM+camera.y-me.y,pointer.x/ZOOM+camera.x-me.x);
     net.channel.send({type:"broadcast",event:"input",payload:{userId:net.userId,input:{dx:dx,dy:dy,angle:angle,fire:!!(isTouch()?(touchReleaseShot||performance.now()<touchAutoBurstUntil):(pointer.down||keys[" "])),super:!!superPressed,dash:!!(touchDash||keys.shift)}}});
     touchDash=false;
     superPressed=false;touchReleaseShot=false;touchAutoAim=false;touchShotAngle=null;
@@ -945,31 +949,29 @@
   }
   var touchMove={x:0,y:0},touchAim={x:1,y:0,active:false},touchDash=false,superPressed=false,touchReleaseShot=false,touchAutoAim=false,touchShotAngle=null,touchAutoBurstUntil=0,touchLastTap=0;
   function autoAimAngle(p){
-    // Prior version rejected enemies beyond weapon range, behind cover or in
-    // bushes, then silently fired at the old facing angle (often downwards).
-    // Prefer a clear target, but ALWAYS aim toward an actual enemy if one exists.
-    var best=null,bestScore=Infinity;
+    // Target the nearest actual living opponent. No range/cover filter and
+    // never reuse the old facing direction when an opponent exists.
+    var target=null,closest=Infinity;
     for(var i=0;i<players.length;i++){
-      var enemy=players[i];
-      if(enemy===p||!enemy.alive||(p.team!=null&&enemy.team===p.team))continue;
-      var d=dist(p,enemy);
-      var score=d+(canSee(p,enemy)?0:220)+(clearShot(p,enemy)?0:160);
-      if(score<bestScore){bestScore=score;best=enemy;}
+      var q=players[i];
+      if(!q||q===p||!q.alive||(p.team!=null&&q.team!=null&&p.team===q.team))continue;
+      var dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy;
+      if(d2<closest){closest=d2;target=q;}
     }
-    return best?Math.atan2(best.y-p.y,best.x-p.x):p.angle;
+    return target?Math.atan2(target.y-p.y,target.x-p.x):p.angle;
   }
   function joystick(el,kind){
-    var active=false,id=null,center=null,dragged=false;
+    var active=false,id=null,center=null,dragged=false,downAt=0;
     function update(e){
       var dx=e.clientX-center.x,dy=e.clientY-center.y,len=Math.hypot(dx,dy);
       var lim=Math.max(34,el.getBoundingClientRect().width*.37),scale=Math.min(1,len/lim);
       var nx=len?dx/len*scale:0,ny=len?dy/len*scale:0;
       el.style.setProperty("--jx",(nx*lim*.76)+"px");el.style.setProperty("--jy",(ny*lim*.76)+"px");
       if(kind==="move")touchMove={x:nx,y:ny};
-      else if(len>13){dragged=true;touchAim={x:dx/Math.max(1,len),y:dy/Math.max(1,len),active:true};}
+      else if(len>24){dragged=true;touchAim={x:dx/Math.max(1,len),y:dy/Math.max(1,len),active:true};}
     }
     el.addEventListener("pointerdown",function(e){
-      if(active)return;e.preventDefault();e.stopPropagation();active=true;id=e.pointerId;dragged=false;
+      if(active)return;e.preventDefault();e.stopPropagation();active=true;id=e.pointerId;dragged=false;downAt=performance.now();
       var r=el.getBoundingClientRect();center={x:r.left+r.width/2,y:r.top+r.height/2};
       if(el.setPointerCapture)try{el.setPointerCapture(id);}catch(err){}
       if(kind==="move")update(e);else el.classList.add("pressed");
@@ -980,9 +982,18 @@
       el.style.setProperty("--jx","0px");el.style.setProperty("--jy","0px");
       if(kind==="move"){touchMove={x:0,y:0};return;}
       if(e.type==="pointerup"){
-        touchAutoAim=!dragged;touchShotAngle=dragged?Math.atan2(touchAim.y,touchAim.x):null;touchReleaseShot=true;
-        if(!dragged){var now=performance.now();if(now-touchLastTap<420){touchAutoBurstUntil=now+1250;touchLastTap=0;}else touchLastTap=now;}
-        else{touchLastTap=0;touchAutoBurstUntil=0;}
+        var now=performance.now();
+        // A double tap always means auto-aim, even if the finger drifted.
+        var doubleTap=now-touchLastTap<470;
+        if(doubleTap){
+          touchAutoBurstUntil=now+1600;touchLastTap=0;
+          touchAutoAim=true;touchShotAngle=null;touchReleaseShot=true;
+        }else if(!dragged){
+          touchLastTap=now;touchAutoAim=true;touchShotAngle=null;touchReleaseShot=true;
+        }else{
+          touchLastTap=0;touchAutoBurstUntil=0;
+          touchAutoAim=false;touchShotAngle=Math.atan2(touchAim.y,touchAim.x);touchReleaseShot=true;
+        }
       }
       touchAim.active=false;
     }
