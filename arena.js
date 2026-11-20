@@ -10,7 +10,21 @@
   var players = [], bullets = [], particles = [], floatingTexts = [], obstacles = [], killFeed = [], last = 0, elapsed = 0;
   var buildCooldownUntil=0,editTarget=null,editCells=[true,true,true,true],lastBuildAt=0,buildDefaults={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"},buildBinds={wall:"q",floor:"x",stair:"f",cone:"c",edit:"g"};
   function freebuild(){return mode==="freebuild";}
-  function buildUI(){var t=root.querySelector("#arenaBuildTouch");if(t){t.hidden=!running||!isTouch();t.querySelectorAll("[data-build-touch]").forEach(function(b){b.hidden=!freebuild()&&b.dataset.buildTouch!=="wall";});}}
+  var buildButton=root.querySelector("#arenaBuild"),lastBuildButtonState="";
+  function buildUI(){
+    if(!buildButton)return;
+    var visible=running&&isTouch()&&!net&&mode==="showdown"&&!gameOver;
+    buildButton.hidden=!visible;
+    if(!visible)return;
+    var remaining=Math.max(0,buildCooldownUntil-performance.now()),ready=!!(me&&me.alive&&remaining===0);
+    var state=ready?"ready":Math.ceil(remaining/100)/10+"s";
+    if(state!==lastBuildButtonState){
+      lastBuildButtonState=state;
+      buildButton.classList.toggle("cooling",!ready);
+      buildButton.setAttribute("aria-disabled",String(!ready));
+      buildButton.querySelector("span").textContent=ready?"BYG":state;
+    }
+  }
   var minimapTerrain=null;
   var terrainTileCache=new Map();
   var keys = Object.create(null), pointer = {x: W/2, y:H/2, down:false};
@@ -242,7 +256,7 @@
     root.querySelector("#arenaTouch").hidden=!isTouch();
     root.querySelector("#arenaModeLabel").textContent=which==="freebuild"?"FREEBUILD":which==="showdown"?"SOLO SHOWDOWN":"TRÆNING";buildUI();
     root.querySelector("#arenaHint").textContent=isTouch()?"Venstre: bevæg · Højre: sigt/skyd · SUPER: evne":"WASD: bevæg · Mus: sigt · Klik: skyd · E: super · Shift: dash";
-    running=true;last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+    running=true;buildUI();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
   }
   function isTouch(){return window.matchMedia("(pointer: coarse)").matches||navigator.maxTouchPoints>0;}
   var effects=[],screenShake=0;
@@ -1031,6 +1045,7 @@
   function loop(now){
     if(!running)return;
     var dt=Math.min(Math.max((now-last)/1000,0),.035);last=now;
+    if(isTouch()&&Math.floor(now/100)!==Math.floor((now-dt*1000)/100))buildUI();
     if(freebuild()&&!editTarget&&!isTouch()){Object.keys(buildBinds).forEach(function(a){if(a!=="edit"&&keys[buildBinds[a]])placeBuild(a);});}
     // Countdown uses real elapsed time, not the capped simulation dt.
     // This keeps 3-2-1 accurate even on slow iPads and after tab throttling.
@@ -1220,13 +1235,13 @@
   }
   bindTapAction(root.querySelector("#arenaSuper"),function(){superPressed=true;});
   bindTapAction(root.querySelector("#arenaDash"),function(){touchDash=true;});
+  bindTapAction(buildButton,function(){if(!buildButton.hidden&&buildButton.getAttribute("aria-disabled")!=="true"){placeBuild("wall");buildUI();}});
   root.querySelector("#arenaFighters").addEventListener("click",function(e){var b=e.target.closest("[data-fighter]");if(b)choose(+b.getAttribute("data-fighter"));});
   root.querySelector("#arenaStart").addEventListener("click",function(){startGame("showdown");});
   
   root.querySelectorAll("[data-edit-cell]").forEach(function(b){b.addEventListener("click",function(){var i=Number(b.dataset.editCell);editCells[i]=!editCells[i];syncEditPanel();});});
   root.querySelector("#arenaEditConfirm").addEventListener("click",confirmEdit);
   root.querySelector("#arenaEditReset").addEventListener("click",resetEdit);
-  root.querySelectorAll("[data-build-touch]").forEach(function(b){b.addEventListener("pointerdown",function(e){e.preventDefault();e.stopPropagation();var a=b.dataset.buildTouch;if(a==="edit")editBuild();else placeBuild(a);});});
   root.querySelector("#arenaRestart").addEventListener("click",function(){if(mode==="online"){root.querySelector("#arenaExit").click();return;}startGame(mode);});
   root.querySelector("#arenaExitResult").addEventListener("click",function(){root.querySelector("#arenaExit").click();});
   var fullscreenBtn=root.querySelector("#arenaFullscreen");
